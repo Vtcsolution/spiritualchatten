@@ -2657,9 +2657,30 @@ useEffect(() => {
       console.log("📨 INCOMING MESSAGE:", data);
       
       const { message, chatSessionId, senderId, senderRole } = data;
-      
+
       if (!message || !chatSessionId) {
         console.log("❌ Invalid message data received");
+        return;
+      }
+
+      // Ignore the echo of our OWN outgoing message — it is already in the
+      // list from the optimistic send + API reconciliation. Appending it here
+      // (before the temp id is swapped for the real _id) caused duplicates.
+      const myId = psychic?._id?.toString();
+      const isOwnMessage =
+        senderRole === 'psychic' ||
+        message?.senderModel === 'Psychic' ||
+        (senderId && myId && senderId.toString() === myId);
+      if (isOwnMessage && !message.isBlocked) {
+        setChatSessions(prev => {
+          const idx = prev.findIndex(s => s._id === chatSessionId);
+          if (idx === -1) return prev;
+          const updated = [...prev];
+          updated[idx] = { ...updated[idx], lastMessage: message, lastMessageAt: new Date() };
+          const [s] = updated.splice(idx, 1);
+          updated.unshift(s);
+          return updated;
+        });
         return;
       }
 
@@ -2830,6 +2851,27 @@ useEffect(() => {
           }, 3000);
         }
       }
+    });
+
+    // Delivery / read receipts for the psychic's own sent messages
+    socketRef.current.on("message_status", (data) => {
+      const { messageId, chatSessionId, status } = data || {};
+      if (!chatSessionId || !status) return;
+      setMessages(prev => {
+        const list = prev[chatSessionId];
+        if (!list) return prev;
+        const next = list.map(m => {
+          const isMine = m.senderModel === 'Psychic';
+          if (!isMine) return m;
+          if (status === 'read') return { ...m, status: 'read', isRead: true };
+          // 'delivered' must not downgrade a message that is already 'read'
+          if (status === 'delivered' && m.status !== 'read') {
+            if (!messageId || m._id === messageId) return { ...m, status: 'delivered' };
+          }
+          return m;
+        });
+        return { ...prev, [chatSessionId]: next };
+      });
     });
 
     socketRef.current.on("online_status_response", (data) => {
@@ -3116,7 +3158,10 @@ useEffect(() => {
         }));
       
         await chatApi.put(`/api/psychic/messages/${sessionId}/read`);
-      
+        // also push a live read receipt so the user's ticks turn blue now,
+        // not only on their next reload
+        safeEmit("message_read", { chatSessionId: sessionId }, { retry: false });
+
         setChatSessions(prev =>
           prev.map(session =>
             session._id === sessionId

@@ -793,10 +793,13 @@ module.exports = (io) => {
             timestamp: new Date()
           });
         } else {
-          // Normal message - broadcast normally
-          io.to(chatRoom).emit('new_message', emitData);
-          
-          // Also emit to personal room of the OTHER participant for reliability
+          // Broadcast to everyone in the chat room EXCEPT the sender — the
+          // sender already has this message from its optimistic add + the API
+          // response, so echoing it back caused duplicate bubbles.
+          socket.to(chatRoom).emit('new_message', emitData);
+
+          // Also emit to the OTHER participant's personal room for reliability
+          // (clients dedupe by message._id, so a second copy is harmless).
           if (role === 'psychic') {
             const userRoom = `user_${chatSession.user._id}`;
             io.to(userRoom).emit('new_message', emitData);
@@ -804,6 +807,15 @@ module.exports = (io) => {
             const psychicRoom = `psychic_${chatSession.psychic._id}`;
             io.to(psychicRoom).emit('new_message', emitData);
           }
+
+          // Tell the sender their message reached the server (single -> delivered)
+          socket.emit('message_status', {
+            messageId: fullMessage._id,
+            chatSessionId,
+            status: 'delivered'
+          });
+          MessageBox.findByIdAndUpdate(fullMessage._id, { status: 'delivered' })
+            .catch(err => console.error('deliver status update error:', err));
         }
         
         // Send acknowledgement
@@ -884,41 +896,32 @@ module.exports = (io) => {
       }).catch(err => console.error('Update delivery status error:', err));
     });
 
-    socket.on('message_read', (data) => {
-      const { messageId, chatSessionId } = data;
-      console.log(`✓✓ Message read confirmation: ${messageId}`);
-      
-      const messageData = { messageId, status: 'read', timestamp: Date.now() };
-      socket.to(`chat_${chatSessionId}`).emit('message_read_status', messageData);
-      
-      const MessageBox = require('../models/HumanChat/MessageBox');
-      MessageBox.findByIdAndUpdate(messageId, { 
-        status: 'read',
-        readAt: Date.now()
-      }).catch(err => console.error('Update read status error:', err));
-    });
-
     // Message status updates
     socket.on('message_delivered', ({ messageId, chatSessionId }) => {
-      console.log(`✓ Message delivered: ${messageId}`);
-      
       io.to(`chat_${chatSessionId}`).emit('message_status', {
-        messageId,
-        status: 'delivered',
-        userId,
-        timestamp: Date.now()
+        messageId, chatSessionId, status: 'delivered', timestamp: Date.now()
       });
     });
 
-    socket.on('message_read', ({ messageId, chatSessionId }) => {
-      console.log(`✓✓ Message read: ${messageId}`);
-      
-      io.to(`chat_${chatSessionId}`).emit('message_status', {
-        messageId,
-        status: 'read',
-        userId,
-        timestamp: Date.now()
-      });
+    // The viewer (user or psychic) has seen the conversation. Mark every
+    // message addressed to them in this session as read, persist it, and tell
+    // the room so the other side's ticks turn blue live and stay blue on reload.
+    socket.on('message_read', async ({ messageId, chatSessionId }) => {
+      if (!chatSessionId) return;
+      try {
+        const MessageBox = require('../models/HumanChat/MessageBox');
+        // role of THIS socket = the reader; they read messages the other side sent
+        const otherModel = role === 'psychic' ? 'User' : 'Psychic';
+        await MessageBox.updateMany(
+          { chatSession: chatSessionId, senderModel: otherModel, status: { $ne: 'read' } },
+          { $set: { status: 'read', isRead: true, readAt: new Date() } }
+        );
+        io.to(`chat_${chatSessionId}`).emit('message_status', {
+          chatSessionId, status: 'read', readerRole: role, messageId: messageId || null, timestamp: Date.now()
+        });
+      } catch (err) {
+        console.error('message_read handler error:', err.message);
+      }
     });
 
     // Timer status update

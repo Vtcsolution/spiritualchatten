@@ -1770,6 +1770,26 @@ const creditPlans = [
       }
     });
 
+    // Delivery / read receipts for the user's own sent messages
+    socketRef.current.on('message_status', (data) => {
+      const { messageId, chatSessionId, status } = data || {};
+      if (!chatSessionId || !status) return;
+      setMessages(prev => {
+        const list = prev[chatSessionId];
+        if (!list) return prev;
+        const next = list.map(m => {
+          const isMine = m.senderModel === 'User' || m.sender?._id === user?._id || m.sender === user?._id;
+          if (!isMine) return m;
+          if (status === 'read') return { ...m, status: 'read', isRead: true };
+          if (status === 'delivered' && m.status !== 'read') {
+            if (!messageId || m._id === messageId) return { ...m, status: 'delivered' };
+          }
+          return m;
+        });
+        return { ...prev, [chatSessionId]: next };
+      });
+    });
+
     // ===== CHAT REQUEST EVENTS =====
     socketRef.current.on('chat_request_accepted', (data) => {
       console.log('✅ Chat request accepted received:', data);
@@ -2047,7 +2067,10 @@ const creditPlans = [
         }));
         
         await chatApi.put(`/api/humanchat/messages/${sessionId}/read`);
-        
+        if (socketRef.current?.connected) {
+          socketRef.current.emit('message_read', { chatSessionId: sessionId });
+        }
+
         setChatSessions(prev =>
           prev.map(session =>
             session._id === sessionId
