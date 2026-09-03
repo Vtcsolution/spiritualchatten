@@ -50,9 +50,9 @@ export default function Signup() {
   useEffect(() => {
     if (registrationSuccess) {
       // Show success toast
-      toast.success('Compte créé avec succès ! 🎉', {
+      toast.success('Account created successfully! 🎉', {
         duration: 3000,
-        description: 'Vous avez reçu 5 crédits gratuits comme cadeau de bienvenue !',
+        description: 'You have received 5 free credits as a welcome gift!',
       });
       
       // Small delay to show the toast before redirect
@@ -88,12 +88,12 @@ export default function Signup() {
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.username) errors.username = "Nom d'utilisateur requis";
-    if (!formData.email) errors.email = 'Adresse email requise';
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = 'Format d\'email invalide';
-    if (!formData.password) errors.password = 'Mot de passe requis';
-    else if (formData.password.length < 6) errors.password = 'Le mot de passe doit contenir au moins 6 caractères';
-    if (formData.password !== formData.confirmPassword) errors.confirmPassword = 'Les mots de passe ne correspondent pas';
+    if (!formData.username) errors.username = "Username is required";
+    if (!formData.email) errors.email = 'Email address is required';
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = 'Invalid email format';
+    if (!formData.password) errors.password = 'Password is required';
+    else if (formData.password.length < 6) errors.password = 'Password must be at least 6 characters';
+    if (formData.password !== formData.confirmPassword) errors.confirmPassword = 'Passwords do not match';
     return errors;
   };
 
@@ -135,10 +135,10 @@ export default function Signup() {
         });
 
       } else {
-        toast.error(result.message || 'Échec de l\'inscription');
+        toast.error(result.message || 'Sign up failed');
       }
     } catch (err) {
-      toast.error('Échec de l\'inscription : ' + err.message);
+      toast.error('Sign up failed: ' + err.message);
     } finally {
       setIsLoading(false);
     }
@@ -190,10 +190,10 @@ export default function Signup() {
             <CardTitle className="text-2xl font-bold text-center flex items-center justify-center gap-3"
               style={{ color: colors.primary }}>
               <User className="h-6 w-6" style={{ color: colors.secondary }} />
-              Créer un Compte
+              Create an Account
             </CardTitle>
             <CardDescription className="text-center text-base">
-              Entrez vos coordonnées pour commencer
+              Enter your details to get started
             </CardDescription>
           </CardHeader>
           
@@ -204,7 +204,7 @@ export default function Signup() {
                 <Label htmlFor="username" className="flex items-center gap-2 font-semibold"
                   style={{ color: colors.primary }}>
                   <User className="h-4 w-4" style={{ color: colors.secondary }} />
-                  Nom d'utilisateur
+                  Username
                 </Label>
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
@@ -214,7 +214,7 @@ export default function Signup() {
                     id="username"
                     value={formData.username}
                     onChange={handleChange}
-                    placeholder="Entrez votre nom d'utilisateur"
+                    placeholder="Enter your username"
                     required
                     className="w-full pl-11 py-6 transition-all duration-200 focus:scale-[1.01]"
                     disabled={isLoading || registrationSuccess}
@@ -240,7 +240,7 @@ export default function Signup() {
                 <Label htmlFor="email" className="flex items-center gap-2 font-semibold"
                   style={{ color: colors.primary }}>
                   <Mail className="h-4 w-4" style={{ color: colors.secondary }} />
-                  Adresse Email
+                  Email Address
                 </Label>
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
@@ -251,7 +251,7 @@ export default function Signup() {
                     type="email"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="Entrez votre email"
+                    placeholder="Enter your email"
                     required
                     className="w-full pl-11 py-6 transition-all duration-200 focus:scale-[1.01]"
                     disabled={isLoading || registrationSuccess}
@@ -277,7 +277,7 @@ export default function Signup() {
                 <Label htmlFor="password" className="flex items-center gap-2 font-semibold"
                   style={{ color: colors.primary }}>
                   <Lock className="h-4 w-4" style={{ color: colors.secondary }} />
-                  Mot de passe
+                  Password
                 </Label>
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
@@ -288,7 +288,7 @@ export default function Signup() {
                     type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={handleChange}
-                    placeholder="Créez un mot de passe (min. 6 caractères)"
+                    placeholder="Create a password (min. 6 characters)"
                     required
                     className="w-full pl-11 pr-11 py-6 transition-all duration-200 focus:scale-[1.01]"
                     disabled={isLoading || registrationSuccess}
@@ -326,7 +326,7 @@ export default function Signup() {
                 <Label htmlFor="confirmPassword" className="flex items-center gap-2 font-semibold"
                   style={{ color: colors.primary }}>
                   <Lock className="h-4 w-4" style={{ color: colors.secondary }} />
-                  Confirmer le mot de passe
+                  Confirm password
                 </Label>
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
@@ -337,7 +337,7 @@ export default function Signup() {
                     type={showConfirmPassword ? "text" : "password"}
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    placeholder="Confirmez votre mot de passe"
+                    placeholder="Confirm your password"
                     required
                     className="w-full pl-11 pr-11 py-6 transition-all duration-200 focus:scale-[1.01]"
                     disabled={isLoading || registrationSuccess}
@@ -394,15 +394,15 @@ export default function Signup() {
                 {isLoading ? (
                   <>
                     <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    Création du compte...
+                    Creating account...
                   </>
                 ) : registrationSuccess ? (
                   <>
                     <CheckCircle className="h-5 w-5 mr-2" />
-                    Redirection...
+                    Redirecting...
                   </>
                 ) : (
-                  'Créer un compte'
+                  'Create account'
                 )}
               </Button>
             </form>
@@ -411,13 +411,13 @@ export default function Signup() {
             <div className="pt-6 border-t text-center"
               style={{ borderColor: colors.secondary + '20' }}>
               <p className="text-sm mb-4" style={{ color: colors.bgLight }}>
-                Vous avez déjà un compte ?{" "}
+                Already have an account?{" "}
                 <Link
                   to="/login"
                   className="font-bold transition-all duration-200 hover:scale-105 inline-block"
                   style={{ color: colors.accent }}
                 >
-                  Se connecter
+                  Sign in
                 </Link>
               </p>
 
@@ -434,9 +434,9 @@ export default function Signup() {
                     <Gift className="h-5 w-5" style={{ color: colors.secondary }} />
                   </div>
                   <div className="text-left">
-                    <p className="font-bold">Cadeau de bienvenue ! 🎁</p>
+                    <p className="font-bold">Welcome gift! 🎁</p>
                     <p className="text-sm">
-                      Recevez <strong>5 crédits gratuits</strong> pour commencer à discuter avec nos coachs.
+                      Get <strong>5 free credits</strong> to start chatting with our advisors.
                     </p>
                   </div>
                 </div>
@@ -448,7 +448,7 @@ export default function Signup() {
         {/* Footer */}
         <div className="text-center mt-8">
           <p className="text-xs" style={{ color: colors.bgLight }}>
-            © {new Date().getFullYear()} Spiritueel Chatten. Tous droits réservés.
+            © {new Date().getFullYear()} Spiritueel Chatten. All rights reserved.
           </p>
         </div>
       </div>

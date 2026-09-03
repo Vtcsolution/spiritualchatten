@@ -151,7 +151,7 @@ export default function Navbar({ onOpenPaymentModal }) {
     // Handle connection errors
     newSocket.on("connect_error", (error) => {
       console.error("Socket connection error:", error);
-      toast.error("Problème de connexion. Veuillez vérifier votre réseau.");
+      toast.error("Connection problem. Please check your network.");
       setIsLoadingBalance(false);
     });
     // Fetch initial wallet balance
@@ -196,7 +196,7 @@ export default function Navbar({ onOpenPaymentModal }) {
 
   const handleLogout = useCallback(() => {
     logout();
-    toast.success("Déconnexion réussie");
+    toast.success("Logged out successfully");
     navigate("/");
   }, [logout, navigate]);
 
@@ -241,13 +241,13 @@ export default function Navbar({ onOpenPaymentModal }) {
 
   const handlePayment = useCallback(async () => {
     if (!selectedPlan) {
-      toast.error("Veuillez sélectionner un forfait");
+      toast.error("Please select a package");
       return;
     }
     // Validate custom amount
     if (selectedPlan.id === 'custom') {
       if (!customAmount || parseFloat(customAmount) < 5) {
-        toast.error('Le montant minimum est de 5€');
+        toast.error('The minimum amount is €5');
         return;
       }
     }
@@ -255,7 +255,7 @@ export default function Navbar({ onOpenPaymentModal }) {
     try {
       const token = localStorage.getItem("accessToken");
       if (!token) {
-        toast.error("Veuillez vous connecter pour effectuer un achat");
+        toast.error("Please sign in to make a purchase");
         navigate("/login");
         return;
       }
@@ -281,7 +281,7 @@ export default function Navbar({ onOpenPaymentModal }) {
         const totalCredits = baseCredits + bonusCredits;
         paymentData = {
           planId: 'custom',
-          planName: 'Montant Personnalisé',
+          planName: 'Custom Amount',
           amount: finalAmount,
           minutes: baseCredits,
           credits: baseCredits,
@@ -321,21 +321,21 @@ export default function Navbar({ onOpenPaymentModal }) {
           localStorage.setItem('paymentId', response.data.paymentId);
           localStorage.setItem('paymentAmount', paymentData.amount);
          
-          toast.success('Veuillez compléter votre paiement sur la page suivante...');
+          toast.success('Please complete your payment on the next page...');
           window.location.href = `/payment/card?paymentId=${response.data.paymentId}`;
         } else {
-          toast.success('Paiement initié avec succès !');
+          toast.success('Payment initiated successfully!');
           setIsPaymentModalOpen(false);
         }
       } else {
-        toast.error(response.data.error || 'Échec du paiement');
+        toast.error(response.data.error || 'Payment failed');
       }
     } catch (error) {
       console.error('Payment error:', error);
       const errorMessage = error.response?.data?.error ||
                           error.response?.data?.message ||
                           error.message ||
-                          'Échec du paiement. Veuillez réessayer.';
+                          'Payment failed. Please try again.';
       toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
@@ -393,21 +393,21 @@ export default function Navbar({ onOpenPaymentModal }) {
           <motion.li variants={menuItemVariants}>
             <Link onClick={handleMenu} to="/" className="block py-2">
               <span className="text-lg font-medium hover:opacity-80 transition-opacity cursor-pointer" style={{ color: colors.deepPurple }}>
-                Accueil
+                Home
               </span>
             </Link>
           </motion.li>
           <motion.li variants={menuItemVariants}>
             <Link onClick={handleMenu} to="/about" className="block py-2">
               <span className="text-lg font-medium hover:opacity-80 transition-opacity cursor-pointer" style={{ color: colors.deepPurple }}>
-                À Propos
+                About
               </span>
             </Link>
           </motion.li>
           <motion.li variants={menuItemVariants}>
             <Link onClick={handleMenu} to="/psychics" className="block py-2">
               <span className="text-lg font-medium hover:opacity-80 transition-opacity cursor-pointer" style={{ color: colors.deepPurple }}>
-                Médiums
+                Psychics
               </span>
             </Link>
           </motion.li>
@@ -428,7 +428,7 @@ export default function Navbar({ onOpenPaymentModal }) {
           <motion.li variants={menuItemVariants}>
             <Link onClick={handleMenu} to="/terms-&-conditions" className="block py-2">
               <span className="text-lg font-medium hover:opacity-80 transition-opacity cursor-pointer" style={{ color: colors.deepPurple }}>
-                Conditions Générales
+                Terms &amp; Conditions
               </span>
             </Link>
           </motion.li>
@@ -453,7 +453,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                     borderColor: colors.antiqueGold
                   }}
                 >
-                  Tableau de Bord Utilisateur
+                  User Dashboard
                 </Link>
               </motion.li>
               <motion.li variants={menuItemVariants} className="py-2">
@@ -467,7 +467,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                     borderColor: colors.antiqueGold
                   }}
                 >
-                  Tableau de Bord Médium
+                  Psychic Dashboard
                 </Link>
               </motion.li>
               <motion.li variants={menuItemVariants} className="py-2">
@@ -483,7 +483,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                     borderColor: '#dc2626'
                   }}
                 >
-                  Déconnexion
+                  Logout
                 </button>
               </motion.li>
             </>
@@ -492,7 +492,7 @@ export default function Navbar({ onOpenPaymentModal }) {
           {!user && (
             <>
               <motion.li variants={menuItemVariants} className="py-2 border-t pt-4" style={{ borderColor: colors.antiqueGold + "30" }}>
-                <span className="text-sm font-medium block mb-2" style={{ color: colors.antiqueGold }}>ACCÈS UTILISATEUR</span>
+                <span className="text-sm font-medium block mb-2" style={{ color: colors.antiqueGold }}>USER ACCESS</span>
                 <div className="flex flex-col gap-2">
                   <Link to="/login" onClick={handleMenu}>
                     <Button
@@ -505,7 +505,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                       }}
                     >
                       <LogIn className="w-4 h-4 mr-2" />
-                      Connexion Utilisateur
+                      User Login
                     </Button>
                   </Link>
                   <Link to="/register" onClick={handleMenu}>
@@ -519,14 +519,14 @@ export default function Navbar({ onOpenPaymentModal }) {
                       }}
                     >
                       <UserPlus className="w-4 h-4 mr-2" />
-                      Inscription Utilisateur
+                      User Sign Up
                     </Button>
                   </Link>
                 </div>
               </motion.li>
               
               <motion.li variants={menuItemVariants} className="py-2">
-                <span className="text-sm font-medium block mb-2" style={{ color: colors.antiqueGold }}>ACCÈS MÉDIUM</span>
+                <span className="text-sm font-medium block mb-2" style={{ color: colors.antiqueGold }}>PSYCHIC ACCESS</span>
                 <div className="flex flex-col gap-2">
                   <Link to="/psychic/login" onClick={handleMenu}>
                     <Button
@@ -539,7 +539,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                       }}
                     >
                       <Star className="w-4 h-4 mr-2" />
-                      Connexion Médium
+                      Psychic Login
                     </Button>
                   </Link>
                   <Link to="/psychic/register" onClick={handleMenu}>
@@ -553,7 +553,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                       }}
                     >
                       <Star className="w-4 h-4 mr-2" />
-                      Inscription Médium
+                      Psychic Sign Up
                     </Button>
                   </Link>
                 </div>
@@ -583,7 +583,7 @@ export default function Navbar({ onOpenPaymentModal }) {
   Spiritueel Chatten
 </span>
 <span className="text-xs font-medium tracking-wider whitespace-nowrap" style={{ color: colors.antiqueGold }}>
-  GUIDANCE SPIRITUELLE
+  SPIRITUAL GUIDANCE
 </span>
                 </motion.div>
               </Link>
@@ -600,21 +600,21 @@ export default function Navbar({ onOpenPaymentModal }) {
                 <motion.li variants={menuItemVariants}>
                   <Link to="/">
                     <span className="text-base font-medium hover:opacity-80 transition-opacity cursor-pointer whitespace-nowrap" style={{ color: colors.deepPurple }}>
-                      Accueil
+                      Home
                     </span>
                   </Link>
                 </motion.li>
                 <motion.li variants={menuItemVariants}>
                   <Link to="/about">
                     <span className="text-base font-medium hover:opacity-80 transition-opacity cursor-pointer whitespace-nowrap" style={{ color: colors.deepPurple }}>
-                      À Propos
+                      About
                     </span>
                   </Link>
                 </motion.li>
                 <motion.li variants={menuItemVariants}>
                   <Link to="/psychics">
                     <span className="text-base font-medium hover:opacity-80 transition-opacity cursor-pointer whitespace-nowrap" style={{ color: colors.deepPurple }}>
-                      Médiums
+                      Psychics
                     </span>
                   </Link>
                 </motion.li>
@@ -635,7 +635,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                 <motion.li variants={menuItemVariants}>
                   <Link to="/terms-&-conditions">
                     <span className="text-base font-medium hover:opacity-80 transition-opacity cursor-pointer whitespace-nowrap" style={{ color: colors.deepPurple }}>
-                      CGU
+                      Terms
                     </span>
                   </Link>
                 </motion.li>
@@ -658,7 +658,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                           borderColor: colors.antiqueGold
                         }}
                       >
-                        Tableau de Bord
+                        Dashboard
                       </Link>
                     </motion.div>
                   
@@ -672,7 +672,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                           borderColor: '#dc2626'
                         }}
                       >
-                        Déconnexion
+                        Logout
                       </button>
                     </motion.div>
                   </>
@@ -693,7 +693,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                           }}
                         >
                           <User className="w-4 h-4" />
-                          <span>Connexion</span>
+                          <span>Login</span>
                           <ChevronDown className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -705,7 +705,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                         }}
                       >
                         <DropdownMenuLabel style={{ color: colors.antiqueGold }}>
-                          Accès Utilisateur
+                          User Access
                         </DropdownMenuLabel>
                         <DropdownMenuItem asChild>
                           <Link 
@@ -714,7 +714,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                             style={{ color: colors.deepPurple }}
                           >
                             <LogIn className="w-4 h-4" />
-                            <span>Connexion Utilisateur</span>
+                            <span>User Login</span>
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
@@ -724,14 +724,14 @@ export default function Navbar({ onOpenPaymentModal }) {
                             style={{ color: colors.deepPurple }}
                           >
                             <UserPlus className="w-4 h-4" />
-                            <span>Inscription Utilisateur</span>
+                            <span>User Sign Up</span>
                           </Link>
                         </DropdownMenuItem>
                         
                         <DropdownMenuSeparator style={{ backgroundColor: colors.antiqueGold + "30" }} />
                         
                         <DropdownMenuLabel style={{ color: colors.antiqueGold }}>
-                          Accès Médium
+                          Psychic Access
                         </DropdownMenuLabel>
                         <DropdownMenuItem asChild>
                           <Link 
@@ -740,7 +740,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                             style={{ color: colors.deepPurple }}
                           >
                             <Star className="w-4 h-4" />
-                            <span>Connexion Médium</span>
+                            <span>Psychic Login</span>
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
@@ -750,7 +750,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                             style={{ color: colors.deepPurple }}
                           >
                             <Star className="w-4 h-4" />
-                            <span>Inscription Médium</span>
+                            <span>Psychic Sign Up</span>
                           </Link>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -778,7 +778,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                         {authLoading || isLoadingBalance ? (
                           <div className="flex items-center gap-2">
                             <Loader2 className="h-3 w-3 animate-spin" />
-                            <span>Chargement...</span>
+                            <span>Loading...</span>
                           </div>
                         ) : (
                           <motion.span
@@ -788,7 +788,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                             animate="animate"
                             className="font-semibold"
                           >
-                            {walletBalance.toFixed(0)} Crédits
+                            {walletBalance.toFixed(0)} Credits
                           </motion.span>
                         )}
                       </motion.div>
@@ -801,10 +801,10 @@ export default function Navbar({ onOpenPaymentModal }) {
                       <DialogHeader>
                         <DialogTitle className="text-lg md:text-xl flex items-center gap-2" style={{ color: colors.deepPurple }}>
                           <Award className="w-5 h-5" style={{ color: colors.antiqueGold }} />
-                          Acheter des Crédits
+                          Buy Credits
                         </DialogTitle>
                         <p className="text-sm mt-1" style={{ color: colors.deepPurple + "CC" }}>
-                          1 crédit = 1 minute de consultation
+                          1 credit = 1 minute of consultation
                         </p>
                       </DialogHeader>
                      
@@ -884,7 +884,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                                     <div className="flex items-center justify-center gap-2 font-medium"
                                       style={{ color: colors.antiqueGold }}>
                                       <Check className="w-4 h-4" />
-                                      <span className="text-sm">Sélectionné</span>
+                                      <span className="text-sm">Selected</span>
                                     </div>
                                   </div>
                                 )}
@@ -901,7 +901,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                                 borderColor: selectedPlan?.id === 'custom' ? colors.antiqueGold : undefined,
                                 ringColor: selectedPlan?.id === 'custom' ? colors.antiqueGold + "40" : undefined
                               }}
-                              onClick={() => handlePlanSelect({ id: 'custom', name: 'Montant Personnalisé' })}
+                              onClick={() => handlePlanSelect({ id: 'custom', name: 'Custom Amount' })}
                               whileHover={{ scale: 1.01 }}
                               whileTap={{ scale: 0.99 }}
                             >
@@ -911,8 +911,8 @@ export default function Navbar({ onOpenPaymentModal }) {
                                     <DollarSign className="w-5 h-5" style={{ color: colors.antiqueGold }} />
                                   </div>
                                   <div>
-                                    <h4 className="font-bold text-base" style={{ color: colors.deepPurple }}>Montant Personnalisé</h4>
-                                    <p className="text-sm" style={{ color: colors.deepPurple + "CC" }}>Choisissez votre propre montant (min 5€)</p>
+                                    <h4 className="font-bold text-base" style={{ color: colors.deepPurple }}>Custom Amount</h4>
+                                    <p className="text-sm" style={{ color: colors.deepPurple + "CC" }}>Choose your own amount (min €5)</p>
                                   </div>
                                 </div>
                                 {selectedPlan?.id === 'custom' && (
@@ -926,7 +926,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                                 <div className="mt-4 space-y-3">
                                   <div>
                                     <label className="block text-sm font-medium mb-1.5" style={{ color: colors.deepPurple }}>
-                                      Montant en EUR (Minimum 5€)
+                                      Amount in EUR (Minimum €5)
                                     </label>
                                     <div className="relative">
                                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -936,7 +936,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                                         type="text"
                                         value={customAmount}
                                         onChange={handleCustomAmountChange}
-                                        placeholder="Entrez le montant"
+                                        placeholder="Enter the amount"
                                         className="block w-full pl-7 pr-12 py-3 border rounded-lg text-lg font-medium focus:outline-none focus:ring-2 focus:border-transparent"
                                         style={{
                                           borderColor: colors.antiqueGold,
@@ -994,7 +994,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                                         borderColor: '#dc2626'
                                       }}>
                                       <p className="text-sm font-medium" style={{ color: '#dc2626' }}>
-                                        ⚠️ Le montant minimum est de 5€
+                                        ⚠️ The minimum amount is €5
                                       </p>
                                     </div>
                                   )}
@@ -1029,8 +1029,8 @@ export default function Navbar({ onOpenPaymentModal }) {
                                   <CreditCard className="w-5 h-5" style={{ color: colors.antiqueGold }} />
                                 </div>
                                 <div className="text-left">
-                                  <span className="font-bold block" style={{ color: colors.deepPurple }}>Carte Bancaire</span>
-                                  <span className="text-xs" style={{ color: colors.deepPurple + "CC" }}>Paiement sécurisé avec Visa, Mastercard, Amex</span>
+                                  <span className="font-bold block" style={{ color: colors.deepPurple }}>Bank Card</span>
+                                  <span className="text-xs" style={{ color: colors.deepPurple + "CC" }}>Secure payment with Visa, Mastercard, Amex</span>
                                 </div>
                               </div>
                               {selectedPaymentMethod === "card" && (
@@ -1047,21 +1047,21 @@ export default function Navbar({ onOpenPaymentModal }) {
                         <div className="space-y-4 pt-2 border-t">
                           <div className="space-y-3">
                             <div className="flex justify-between items-center">
-                              <span className="text-gray-700 font-medium">Forfait sélectionné :</span>
+                              <span className="text-gray-700 font-medium">Selected package:</span>
                               <span className="font-bold text-gray-900">
-                                {selectedPlan?.name || 'Aucun forfait sélectionné'}
+                                {selectedPlan?.name || 'No package selected'}
                               </span>
                             </div>
                            
                             <div className="flex justify-between items-center">
-                              <span className="text-gray-700 font-medium">Montant :</span>
+                              <span className="text-gray-700 font-medium">Amount:</span>
 <span className="text-xl font-extrabold text-gray-900">
   €{(selectedPlan?.id === 'custom' && customAmount ? parseFloat(customAmount) : selectedPlan?.amount || 0).toFixed(2)} EUR
 </span>
                             </div>
                            
                             <div className="flex justify-between items-center">
-                              <span className="text-gray-700 font-medium">Minutes de consultation :</span>
+                              <span className="text-gray-700 font-medium">Consultation minutes:</span>
                               <span className="text-xl font-extrabold flex items-center gap-2" style={{ color: colors.deepPurple }}>
                                 <Zap className="w-5 h-5" style={{ color: colors.antiqueGold }} />
                                 {selectedPlan?.id === 'custom' && calculatedCredits
@@ -1075,7 +1075,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                            
                             {selectedPlan?.bonusCredits > 0 && (
                               <div className="flex justify-between items-center rounded-lg p-2" style={{ backgroundColor: colors.lightGold }}>
-                                <span className="font-medium" style={{ color: colors.deepPurple }}>Minutes Bonus :</span>
+                                <span className="font-medium" style={{ color: colors.deepPurple }}>Bonus minutes:</span>
                                 <span className="font-bold" style={{ color: colors.antiqueGold }}>
                                   +{selectedPlan.bonusCredits} minutes
                                 </span>
@@ -1085,7 +1085,7 @@ export default function Navbar({ onOpenPaymentModal }) {
                             {/* Price per minute */}
                             {selectedPlan && selectedPlan.id !== 'custom' && (
                               <div className="flex justify-between items-center">
-                                <span className="text-sm" style={{ color: colors.deepPurple + "80" }}>Tarif par minute :</span>
+                                <span className="text-sm" style={{ color: colors.deepPurple + "80" }}>Rate per minute:</span>
                                 <span className="text-sm font-semibold" style={{ color: colors.deepPurple }}>
                                   €{selectedPlan.pricePerMinute.toFixed(2)}/minute
                                 </span>
@@ -1109,15 +1109,15 @@ export default function Navbar({ onOpenPaymentModal }) {
                             {isProcessing ? (
                               <div className="flex items-center gap-2 justify-center">
                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                <span className="font-semibold">Traitement du paiement...</span>
+                                <span className="font-semibold">Processing payment...</span>
                               </div>
                             ) : (
                               <div className="flex items-center justify-center gap-2">
                                 <CreditCard className="w-5 h-5" />
                                 <span>
                                   {selectedPlan?.id === 'custom'
-                                    ? `Payer €${parseFloat(customAmount || 0).toFixed(2)} EUR`
-                                    : `Payer €${selectedPlan?.amount?.toFixed(2) || 0} EUR`
+                                    ? `Pay €${parseFloat(customAmount || 0).toFixed(2)} EUR`
+                                    : `Pay €${selectedPlan?.amount?.toFixed(2) || 0} EUR`
                                   }
                                 </span>
                               </div>
@@ -1126,13 +1126,13 @@ export default function Navbar({ onOpenPaymentModal }) {
                          
                           <div className="text-center space-y-1.5">
                             <p className="text-xs" style={{ color: colors.deepPurple + "70" }}>
-                              🔒 Paiement sécurisé par Stripe
+                              🔒 Secure payment by Stripe
                             </p>
                             <p className="text-xs" style={{ color: colors.deepPurple + "70" }}>
-                              💳 Vos informations de paiement sont cryptées et sécurisées
+                              💳 Your payment information is encrypted and secure
                             </p>
                             <p className="text-xs font-medium" style={{ color: colors.antiqueGold }}>
-                              ✨ 1 minute = 1 crédit
+                              ✨ 1 minute = 1 credit
                             </p>
                           </div>
                         </div>

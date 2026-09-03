@@ -52,11 +52,11 @@ export default function Signin() {
       const result = await login(credentials);
       console.log("Login result:", result);
       if (result?.success) {
-        toast.success("Connexion réussie");
+        toast.success("Signed in successfully");
         console.log("Navigating to / after successful login");
         navigate("/", { replace: true });
       } else {
-        toast.error(result?.message || "Échec de la connexion");
+        toast.error(result?.message || "Sign in failed");
       }
     } catch (err) {
       console.error("Form submission error:", err);
@@ -110,10 +110,10 @@ export default function Signin() {
             <CardTitle className="text-2xl font-bold text-center flex items-center justify-center gap-3"
               style={{ color: colors.primary }}>
               <Lock className="h-6 w-6" style={{ color: colors.secondary }} />
-              Connexion
+              Sign In
             </CardTitle>
             <CardDescription className="text-center text-base">
-              Entrez vos identifiants pour vous connecter
+              Enter your credentials to sign in
             </CardDescription>
           </CardHeader>
           
@@ -133,7 +133,7 @@ export default function Signin() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="Entrez votre email"
+                    placeholder="Enter your email"
                     className="w-full pl-11 py-6 transition-all duration-200 focus:scale-[1.01]"
                     value={credentials.email}
                     onChange={handleChange}
@@ -150,7 +150,7 @@ export default function Signin() {
                 <Label htmlFor="password" className="flex items-center gap-2 font-semibold"
                   style={{ color: colors.primary }}>
                   <Lock className="h-4 w-4" style={{ color: colors.secondary }} />
-                  Mot de passe
+                  Password
                 </Label>
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
@@ -159,7 +159,7 @@ export default function Signin() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Entrez votre mot de passe"
+                    placeholder="Enter your password"
                     className="w-full pl-11 pr-11 py-6 transition-all duration-200 focus:scale-[1.01]"
                     value={credentials.password}
                     onChange={handleChange}
@@ -206,7 +206,7 @@ export default function Signin() {
                 }}
                 disabled={loading}
               >
-                {loading ? "Connexion en cours..." : "Se connecter"}
+                {loading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
 
@@ -217,7 +217,7 @@ export default function Signin() {
                 className="text-sm font-medium transition-all duration-200 hover:scale-105 inline-block"
                 style={{ color: colors.accent }}
               >
-                Mot de passe oublié ?
+                Forgot password?
               </Link>
             </div>
 
@@ -229,7 +229,7 @@ export default function Signin() {
               <div className="relative flex justify-center text-sm">
                 <span className="px-3 bg-white font-medium"
                   style={{ color: colors.bgLight }}>
-                  Nouveau sur la plateforme ?
+                  New to the platform?
                 </span>
               </div>
             </div>
@@ -246,7 +246,7 @@ export default function Signin() {
                     backgroundColor: colors.secondary + '10'
                   }}
                 >
-                  S'inscrire
+                  Sign Up
                 </Button>
               </Link>
             </div>
@@ -257,7 +257,7 @@ export default function Signin() {
               <p className="text-xs flex items-center justify-center gap-2"
                 style={{ color: colors.bgLight }}>
                 <Lock className="h-3 w-3" style={{ color: colors.success }} />
-                Connexion sécurisée et chiffrée
+                Secure and encrypted connection
               </p>
             </div>
           </CardContent>

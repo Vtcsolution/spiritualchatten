@@ -11,7 +11,7 @@ import axios from 'axios';
 import { Helmet } from "react-helmet-async";
 
 const BlogsPage = () => {
-  const [selectedCategory, setSelectedCategory] = useState('Tous');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [visibleArticles, setVisibleArticles] = useState(6);
@@ -29,25 +29,24 @@ const BlogsPage = () => {
     textLight: "#6B7280"
   };
 
-  // Catégories spirituelles et psychiques - Doivent correspondre EXACTEMENT aux catégories du backend
-  // Les catégories backend sont en anglais, donc nous utilisons les noms anglais pour le filtrage
+  // Spiritual and psychic categories - must match the backend categories EXACTLY
   const categories = [
-    { name: 'Tous', filterValue: null, icon: Sparkles },
+    { name: 'All', filterValue: null, icon: Sparkles },
     { name: 'Tarot', filterValue: 'Tarot', icon: Star },
-    { name: 'Astrologie', filterValue: 'Astrology', icon: Sun },
-    { name: 'Numérologie', filterValue: 'Numerology', icon: Gem },
-    { name: 'Palmisterie', filterValue: 'Palmistry', icon: Hand },
-    { name: 'Relations Amoureuses', filterValue: 'Love & Relationships', icon: Heart },
-    { name: 'Guidance Spirituelle', filterValue: 'Spiritual Growth', icon: Moon },
-    { name: 'Interprétation des Rêves', filterValue: 'Dream Interpretation', icon: MessageCircle },
-    { name: 'Méditation', filterValue: 'Meditation & Mindfulness', icon: Flower2 },
-    { name: 'Guérison par les Cristaux', filterValue: 'Crystal Healing', icon: Diamond },
-    { name: 'Lecture de l\'Aura', filterValue: 'Aura Reading', icon: Feather },
-    { name: 'Régression des Vies Antérieures', filterValue: 'Past Life Regression', icon: Infinity },
-    { name: 'Guérison des Chakras', filterValue: 'Chakra Healing', icon: Zap },
-    { name: 'Nombres Angéliques', filterValue: 'Angel Numbers', icon: Cloud },
-    { name: 'Développement Psychique', filterValue: 'Psychic Development', icon: Crown },
-    { name: 'Conseils de Carrière', filterValue: 'Career Guidance', icon: Compass }
+    { name: 'Astrology', filterValue: 'Astrology', icon: Sun },
+    { name: 'Numerology', filterValue: 'Numerology', icon: Gem },
+    { name: 'Palmistry', filterValue: 'Palmistry', icon: Hand },
+    { name: 'Love & Relationships', filterValue: 'Love & Relationships', icon: Heart },
+    { name: 'Spiritual Guidance', filterValue: 'Spiritual Growth', icon: Moon },
+    { name: 'Dream Interpretation', filterValue: 'Dream Interpretation', icon: MessageCircle },
+    { name: 'Meditation', filterValue: 'Meditation & Mindfulness', icon: Flower2 },
+    { name: 'Crystal Healing', filterValue: 'Crystal Healing', icon: Diamond },
+    { name: 'Aura Reading', filterValue: 'Aura Reading', icon: Feather },
+    { name: 'Past Life Regression', filterValue: 'Past Life Regression', icon: Infinity },
+    { name: 'Chakra Healing', filterValue: 'Chakra Healing', icon: Zap },
+    { name: 'Angel Numbers', filterValue: 'Angel Numbers', icon: Cloud },
+    { name: 'Psychic Development', filterValue: 'Psychic Development', icon: Crown },
+    { name: 'Career Guidance', filterValue: 'Career Guidance', icon: Compass }
   ];
 
   useEffect(() => {
@@ -65,7 +64,7 @@ const BlogsPage = () => {
         }
       } catch (err) {
         console.error('Erreur lors du chargement des blogs:', err);
-        setError('Impossible de charger les articles. Veuillez réessayer.');
+        setError('Unable to load articles. Please try again.');
         setBlogs([]);
       } finally {
         setIsLoading(false);
@@ -81,12 +80,12 @@ const BlogsPage = () => {
     const selectedCat = categories.find(c => c.name === selectedCategory);
     const categoryFilterValue = selectedCat?.filterValue;
     
-    const matchesCategory = selectedCategory === 'Tous' || blog.category === categoryFilterValue;
+    const matchesCategory = selectedCategory === 'All' || blog.category === categoryFilterValue;
     const matchesSearch = blog.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          blog.excerpt?.toLowerCase().includes(searchTerm.toLowerCase());
     
     // Debug log pour voir le filtrage
-    if (selectedCategory !== 'Tous') {
+    if (selectedCategory !== 'All') {
       console.log(`Filtrage: blog.category="${blog.category}" vs filter="${categoryFilterValue}" => ${matchesCategory}`);
     }
     
@@ -139,13 +138,13 @@ const BlogsPage = () => {
             {blog.trending && (
               <span className="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold rounded-full shadow-lg">
                 <TrendingUp className="w-3 h-3" />
-                Tendance
+                Trending
               </span>
             )}
             {blog.featured && (
               <span className="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-purple-600 to-pink-500 text-white text-xs font-semibold rounded-full shadow-lg">
                 <Star className="w-3 h-3 fill-current" />
-                À la une
+                Featured
               </span>
             )}
           </div>
@@ -205,7 +204,7 @@ const BlogsPage = () => {
               className="flex items-center gap-1 font-medium transition-colors duration-300 text-sm"
               style={{ color: colors.antiqueGold }}
             >
-              Lire la suite
+              Read more
               <ArrowRight className="w-3 h-3 transform group-hover:translate-x-1 transition-transform duration-300" />
             </Link>
           </div>
@@ -217,13 +216,13 @@ const BlogsPage = () => {
   return (
     <div className="min-h-screen" style={{ backgroundColor: colors.softIvory }}>
       <Helmet>
-        <title>Articles Spirituels | Tarot, Astrologie & Guidance | Voyance Magique</title>
+        <title>Spiritual Articles | Tarot, Astrology & Guidance | Spiritueel Chatten</title>
         <meta
           name="description"
-          content="Découvrez nos articles spirituels sur le tarot, l'astrologie, la numérologie et bien plus encore. Explorez la sagesse ancestrale et trouvez des réponses à vos questions."
+          content="Explore our spiritual articles on tarot, astrology, numerology and much more. Discover ancient wisdom and find answers to your questions."
         />
-        <meta name="keywords" content="tarot, astrologie, numérologie, spiritualité, guidance spirituelle, voyance, développement personnel" />
-        <link rel="canonical" href="https://voyancemagique.com/blogs" />
+        <meta name="keywords" content="tarot, astrology, numerology, spirituality, spiritual guidance, psychic reading, personal growth" />
+        <link rel="canonical" href="https://greatowear.com/blogs" />
       </Helmet>
 
       {/* Section Héro */}
@@ -249,11 +248,11 @@ const BlogsPage = () => {
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold mb-6"
                 style={{ color: colors.lightGold }}>
-              Sagesse Spirituelle
+              Spiritual Wisdom
             </h1>
             <p className="text-xl md:text-2xl max-w-3xl mx-auto leading-relaxed"
                style={{ color: colors.softIvory }}>
-              Explorez les mystères de l'univers et découvrez des conseils pour votre cheminement spirituel
+              Explore the mysteries of the universe and discover guidance for your spiritual journey
             </p>
           </motion.div>
         </div>
@@ -269,7 +268,7 @@ const BlogsPage = () => {
                      style={{ color: colors.textLight }} />
               <input
                 type="text"
-                placeholder="Rechercher un article..."
+                placeholder="Search for an article..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 bg-white"
@@ -396,9 +395,9 @@ const BlogsPage = () => {
           <div className="mt-4 text-sm text-center" style={{ color: colors.textLight }}>
             {!isLoading && (
               <span>
-                {filteredBlogs.length} {filteredBlogs.length === 1 ? 'article trouvé' : 'articles trouvés'}
-                {selectedCategory !== 'Tous' && ` dans la catégorie "${selectedCategory}"`}
-                {searchTerm && ` pour "${searchTerm}"`}
+                {filteredBlogs.length} {filteredBlogs.length === 1 ? 'article found' : 'articles found'}
+                {selectedCategory !== 'All' && ` in category "${selectedCategory}"`}
+                {searchTerm && ` for "${searchTerm}"`}
               </span>
             )}
           </div>
@@ -418,7 +417,7 @@ const BlogsPage = () => {
             <BookOpen className="w-6 h-6" style={{ color: colors.antiqueGold }} />
             <h2 className="text-2xl md:text-3xl font-serif font-bold"
                 style={{ color: colors.deepPurple }}>
-              Articles Récents {!isLoading && `(${filteredBlogs.length})`}
+              Recent Articles {!isLoading && `(${filteredBlogs.length})`}
             </h2>
             <div className="flex-1 h-px bg-gradient-to-r"
                  style={{ background: `linear-gradient(90deg, ${colors.antiqueGold} 0%, transparent 100%)` }} />
@@ -433,11 +432,11 @@ const BlogsPage = () => {
           ) : filteredBlogs.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-lg mb-4" style={{ color: colors.textLight }}>
-                {blogs.length === 0 ? 'Aucun article disponible pour le moment.' : 'Aucun article ne correspond à votre recherche.'}
+                {blogs.length === 0 ? 'No articles available at the moment.' : 'No articles match your search.'}
               </div>
               {blogs.length === 0 && (
                 <div className="text-sm" style={{ color: colors.antiqueGold }}>
-                  Revenez bientôt pour découvrir de nouveaux articles spirituels !
+                  Check back soon for new spiritual articles!
                 </div>
               )}
             </div>
@@ -466,7 +465,7 @@ const BlogsPage = () => {
                       color: colors.deepPurple
                     }}
                   >
-                    Charger plus d'articles
+                    Load more articles
                     <ChevronDown className="w-4 h-4" />
                   </button>
                 </div>

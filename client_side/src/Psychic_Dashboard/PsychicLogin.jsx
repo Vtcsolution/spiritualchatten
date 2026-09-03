@@ -52,14 +52,14 @@ export default function PsychicLogin() {
     e.preventDefault();
 
     if (!credentials.email || !credentials.password) {
-      toast.error("Veuillez remplir tous les champs");
+      toast.error("Please fill in all fields");
       return;
     }
 
     const result = await login(credentials);
 
     if (result?.success) {
-      toast.success("Bon retour ! Redirection vers le tableau de bord...");
+      toast.success("Welcome back! Redirecting to your dashboard...");
       setTimeout(() => {
         navigate('/psychic/dashboard', { replace: true });
       }, 1000);
@@ -72,7 +72,7 @@ export default function PsychicLogin() {
       email: "demo@psychic.com",
       password: "demopassword123"
     });
-    toast.info("Identifiants de démo chargés. Cliquez sur Se connecter pour continuer.");
+    toast.info("Demo credentials loaded. Click Sign In to continue.");
   };
 
   return (
@@ -124,10 +124,10 @@ export default function PsychicLogin() {
             
             <div>
               <h1 className="text-4xl font-bold" style={{ color: colors.primary }}>
-                Portail Médium
+                Psychic Portal
               </h1>
               <p className="text-xl mt-2" style={{ color: colors.bgLight }}>
-                Accédez à votre Pratique Spirituelle
+                Access your spiritual practice
               </p>
             </div>
           </div>
@@ -144,10 +144,10 @@ export default function PsychicLogin() {
               <CardTitle className="text-2xl font-bold flex items-center gap-3"
                 style={{ color: colors.primary }}>
                 <Lock className="h-6 w-6" style={{ color: colors.secondary }} />
-                Connexion Sécurisée
+                Secure Login
               </CardTitle>
               <CardDescription>
-                Entrez vos identifiants pour accéder au portail médium
+                Enter your credentials to access the psychic portal
               </CardDescription>
             </CardHeader>
 
@@ -158,7 +158,7 @@ export default function PsychicLogin() {
                   <Label htmlFor="email" className="flex items-center gap-2 font-bold"
                     style={{ color: colors.primary }}>
                     <Mail className="h-4 w-4" style={{ color: colors.secondary }} />
-                    Adresse Email
+                    Email Address
                   </Label>
                   <div className="relative">
                     <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
@@ -186,7 +186,7 @@ export default function PsychicLogin() {
                   <Label htmlFor="password" className="flex items-center gap-2 font-bold"
                     style={{ color: colors.primary }}>
                     <Lock className="h-4 w-4" style={{ color: colors.secondary }} />
-                    Mot de passe
+                    Password
                   </Label>
                   <div className="relative">
                     <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
@@ -229,7 +229,7 @@ export default function PsychicLogin() {
                       onMouseLeave={() => setIsHovered(false)}
                     >
                       <span className="flex items-center gap-1">
-                        Mot de passe oublié ?
+                        Forgot password?
                         <ArrowRight className={`h-3 w-3 transition-transform duration-200 ${isHovered ? 'translate-x-1' : ''}`} />
                       </span>
                     </Link>
@@ -237,7 +237,7 @@ export default function PsychicLogin() {
                     <div className="text-xs" style={{ color: colors.bgLight }}>
                       {credentials.password.length > 0 && (
                         <span className={`font-medium ${credentials.password.length >= 8 ? 'text-green-600' : 'text-red-500'}`}>
-                          {credentials.password.length >= 8 ? '✓ Fort' : 'Trop court'}
+                          {credentials.password.length >= 8 ? '✓ Strong' : 'Too short'}
                         </span>
                       )}
                     </div>
@@ -257,12 +257,12 @@ export default function PsychicLogin() {
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Authentification...
+                      Authenticating...
                     </>
                   ) : (
                     <>
                       <span className="flex items-center justify-center gap-2">
-                        Accéder au Portail
+                        Access Portal
                         <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-2" />
                       </span>
                     </>
@@ -276,7 +276,7 @@ export default function PsychicLogin() {
                 <div className="flex items-center justify-center gap-3 mb-3">
                   <Shield className="h-5 w-5" style={{ color: colors.success }} />
                   <p className="text-sm font-medium" style={{ color: colors.bgLight }}>
-                    Votre connexion est sécurisée et cryptée
+                    Your connection is secure and encrypted
                   </p>
                 </div>
                 
@@ -288,10 +288,10 @@ export default function PsychicLogin() {
                     color: colors.bgLight
                   }}>
                   <p className="text-xs font-semibold mb-1" style={{ color: colors.primary }}>
-                    🚀 Accès Rapide de Test
+                    🚀 Quick Test Access
                   </p>
                   <p className="text-xs">
-                    Cliquez sur "Essayer l'accès démo" pour remplir automatiquement les identifiants de test
+                    Click "Try demo access" to auto-fill the test credentials
                   </p>
                 </div>
               </div>
@@ -301,13 +301,13 @@ export default function PsychicLogin() {
               style={{ borderColor: colors.secondary + '20' }}>
               <div className="text-center w-full">
                 <p className="text-sm" style={{ color: colors.bgLight }}>
-                  Vous avez déjà un compte ?{" "}
-                  <Link 
+                  Don't have an account yet?{" "}
+                  <Link
                     to="/psychic/register"
                     className="font-bold hover:underline transition-all duration-200 hover:scale-105 inline-block"
                     style={{ color: colors.secondary }}
                   >
-                    Se connecter
+                    Apply now
                   </Link>
                 </p>
               </div>
@@ -327,7 +327,7 @@ export default function PsychicLogin() {
             ))}
           </div>
           <p className="text-sm" style={{ color: colors.bgLight }}>
-            © {new Date().getFullYear()} Spiritueel Chatten. Tous droits réservés.
+            © {new Date().getFullYear()} Spiritueel Chatten. All rights reserved.
           </p>
         </div>
       </div>

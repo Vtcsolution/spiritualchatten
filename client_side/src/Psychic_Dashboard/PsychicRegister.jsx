@@ -43,15 +43,15 @@ const colors = {
 
 // Define psychic categories with icons
 const psychicCategories = [
-  { value: "Tarot Reading", label: "Lecture de Tarot", icon: <Sparkle className="h-4 w-4" /> },
-  { value: "Astrology", label: "Astrologie", icon: <Moon className="h-4 w-4" /> },
-  { value: "Reading", label: "Lecture Spirituelle", icon: <BookOpen className="h-4 w-4" /> },
-  { value: "Love & Relationships", label: "Amour & Relations", icon: <Heart className="h-4 w-4" /> },
-  { value: "Career & Finance", label: "Carrière & Finances", icon: <Briefcase className="h-4 w-4" /> },
-  { value: "Spiritual Guidance", label: "Guidance Spirituelle", icon: <Compass className="h-4 w-4" /> },
-  { value: "Numerology", label: "Numérologie", icon: <Brain className="h-4 w-4" /> },
+  { value: "Tarot Reading", label: "Tarot Reading", icon: <Sparkle className="h-4 w-4" /> },
+  { value: "Astrology", label: "Astrology", icon: <Moon className="h-4 w-4" /> },
+  { value: "Reading", label: "Spiritual Reading", icon: <BookOpen className="h-4 w-4" /> },
+  { value: "Love & Relationships", label: "Love & Relationships", icon: <Heart className="h-4 w-4" /> },
+  { value: "Career & Finance", label: "Career & Finance", icon: <Briefcase className="h-4 w-4" /> },
+  { value: "Spiritual Guidance", label: "Spiritual Guidance", icon: <Compass className="h-4 w-4" /> },
+  { value: "Numerology", label: "Numerology", icon: <Brain className="h-4 w-4" /> },
   { value: "Clairvoyant", label: "Clairvoyance", icon: <Eye className="h-4 w-4" /> },
-  { value: "Dream Analysis", label: "Analyse des Rêves", icon: <Cloud className="h-4 w-4" /> },
+  { value: "Dream Analysis", label: "Dream Analysis", icon: <Cloud className="h-4 w-4" /> },
 ];
 
 export default function PsychicRegister() {
@@ -68,7 +68,7 @@ export default function PsychicRegister() {
     category: "",
     abilities: "",           // Added missing field
     location: "",            // Added missing field
-    languages: "Français",   // Added missing field (default)
+    languages: "English",   // Added missing field (default)
     experience: "",          // Added missing field
     specialization: "",      // Added missing field
     image: "",
@@ -107,7 +107,7 @@ export default function PsychicRegister() {
       if (!res.ok) throw new Error(json.error?.message || "Upload failed");
       return json.secure_url;
     } catch (error) {
-      toast.error("Échec du téléchargement de l'image: " + error.message);
+      toast.error("Image upload failed: " + error.message);
       throw error;
     }
   };
@@ -117,13 +117,13 @@ export default function PsychicRegister() {
     if (file) {
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        toast.error("Veuillez sélectionner un fichier image (JPG, PNG, GIF)");
+        toast.error("Please select an image file (JPG, PNG, GIF)");
         return;
       }
       
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        toast.error("La taille de l'image doit être inférieure à 5 Mo");
+        toast.error("Image size must be less than 5 MB");
         return;
       }
       
@@ -142,17 +142,17 @@ export default function PsychicRegister() {
     e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
-      toast.error("Les mots de passe ne correspondent pas");
+      toast.error("Passwords do not match");
       return;
     }
 
     if (!formData.gender) {
-      toast.error("Veuillez sélectionner votre genre");
+      toast.error("Please select your gender");
       return;
     }
 
     if (!formData.category) {
-      toast.error("Veuillez sélectionner votre catégorie principale");
+      toast.error("Please select your main category");
       return;
     }
 
@@ -183,10 +183,10 @@ export default function PsychicRegister() {
       const result = await register(registrationData);
 
       if (result?.success) {
-        toast.success("Candidature soumise avec succès ! En attente d'approbation de l'administrateur.", {
+        toast.success("Application submitted successfully! Awaiting administrator approval.", {
           duration: 5000,
           action: {
-            label: "Se connecter",
+            label: "Sign in",
             onClick: () => navigate("/psychic/login"),
           },
         });
@@ -196,7 +196,7 @@ export default function PsychicRegister() {
       }
     } catch (error) {
       console.error('Registration error:', error);
-      toast.error(error.message || "Échec de l'inscription. Veuillez réessayer.");
+      toast.error(error.message || "Registration failed. Please try again.");
     }
   };
 
@@ -220,10 +220,10 @@ export default function PsychicRegister() {
             <Sparkles className="h-12 w-12" style={{ color: colors.secondary }} />
           </div>
           <h1 className="text-4xl font-bold mb-2" style={{ color: colors.primary }}>
-            Rejoignez Notre Cercle de Lumière
+            Join Our Circle of Light
           </h1>
           <p className="text-lg" style={{ color: colors.bgLight }}>
-            Partagez vos dons avec ceux qui cherchent des conseils
+            Share your gifts with those seeking guidance
           </p>
         </div>
 
@@ -235,10 +235,10 @@ export default function PsychicRegister() {
               <CardTitle className="text-2xl font-bold flex items-center gap-3"
                 style={{ color: colors.primary }}>
                 <UserPlus className="h-6 w-6" style={{ color: colors.secondary }} />
-                Formulaire de Candidature
+                Application Form
               </CardTitle>
               <CardDescription>
-                Remplissez vos informations pour postuler. Tous les champs sont obligatoires.
+                Fill in your details to apply. All fields are required.
               </CardDescription>
             </CardHeader>
 
@@ -249,7 +249,7 @@ export default function PsychicRegister() {
                   <Label className="flex items-center gap-2 font-bold"
                     style={{ color: colors.primary }}>
                     <User className="h-4 w-4" />
-                    Photo de Profil
+                    Profile Photo
                   </Label>
                   <div className="flex items-center gap-6">
                     <div 
@@ -265,13 +265,13 @@ export default function PsychicRegister() {
                         {imagePreviewUrl ? (
                           <img 
                             src={imagePreviewUrl} 
-                            alt="Aperçu" 
+                            alt="Preview"
                             className="w-full h-full object-cover"
                           />
                         ) : formData.image ? (
                           <img 
                             src={formData.image} 
-                            alt="Actuelle" 
+                            alt="Current"
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -315,10 +315,10 @@ export default function PsychicRegister() {
                         style={{ color: colors.secondary }}
                       >
                         <Upload className="w-4 h-4" />
-                        {imageFile ? "Changer l'image" : "Télécharger une image"}
+                        {imageFile ? "Change image" : "Upload an image"}
                       </Label>
                       <p className="text-xs mt-1" style={{ color: colors.bgLight }}>
-                        Recommandé : 400x400px, JPG ou PNG
+                        Recommended: 400x400px, JPG or PNG
                       </p>
                       
                       {/* Image URL Input */}
@@ -328,7 +328,7 @@ export default function PsychicRegister() {
                           id="image" 
                           value={formData.image} 
                           onChange={handleChange} 
-                          placeholder="Ou entrez une URL d'image" 
+                          placeholder="Or enter an image URL"
                           disabled={!!imageFile}
                           className="text-sm"
                           style={{ 
@@ -346,14 +346,14 @@ export default function PsychicRegister() {
                   <div className="space-y-2">
                     <Label htmlFor="name" className="flex items-center gap-2">
                       <User className="h-4 w-4" style={{ color: colors.secondary }} />
-                      Nom Complet *
+                      Full Name *
                     </Label>
-                    <Input 
-                      id="name" 
-                      required 
+                    <Input
+                      id="name"
+                      required
                       value={formData.name}
                       onChange={handleChange}
-                      placeholder="Entrez votre nom complet"
+                      placeholder="Enter your full name"
                       style={{ 
                         borderColor: colors.secondary + '30',
                         color: colors.primary
@@ -364,7 +364,7 @@ export default function PsychicRegister() {
                   <div className="space-y-2">
                     <Label htmlFor="email" className="flex items-center gap-2">
                       <Mail className="h-4 w-4" style={{ color: colors.secondary }} />
-                      Adresse Email *
+                      Email Address *
                     </Label>
                     <Input 
                       id="email" 
@@ -386,15 +386,15 @@ export default function PsychicRegister() {
                   <div className="space-y-2">
                     <Label htmlFor="password" className="flex items-center gap-2">
                       <Lock className="h-4 w-4" style={{ color: colors.secondary }} />
-                      Mot de passe *
+                      Password *
                     </Label>
-                    <Input 
-                      id="password" 
-                      type="password" 
-                      required 
+                    <Input
+                      id="password"
+                      type="password"
+                      required
                       value={formData.password}
                       onChange={handleChange}
-                      placeholder="Minimum 8 caractères"
+                      placeholder="Minimum 8 characters"
                       style={{ 
                         borderColor: colors.secondary + '30',
                         color: colors.primary
@@ -405,15 +405,15 @@ export default function PsychicRegister() {
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword" className="flex items-center gap-2">
                       <Lock className="h-4 w-4" style={{ color: colors.secondary }} />
-                      Confirmer le mot de passe *
+                      Confirm password *
                     </Label>
-                    <Input 
-                      id="confirmPassword" 
-                      type="password" 
-                      required 
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      required
                       value={formData.confirmPassword}
                       onChange={handleChange}
-                      placeholder="Ressaisissez votre mot de passe"
+                      placeholder="Re-enter your password"
                       style={{ 
                         borderColor: colors.secondary + '30',
                         color: colors.primary
@@ -428,14 +428,14 @@ export default function PsychicRegister() {
                     <Label className="flex items-center gap-2 font-bold"
                       style={{ color: colors.primary }}>
                       <Layers className="h-4 w-4" style={{ color: colors.secondary }} />
-                      Catégorie Principale *
+                      Main Category *
                     </Label>
                     <Select onValueChange={handleCategoryChange} required>
-                      <SelectTrigger style={{ 
+                      <SelectTrigger style={{
                         borderColor: colors.secondary + '30',
                         color: colors.primary
                       }}>
-                        <SelectValue placeholder="Sélectionnez votre catégorie principale" />
+                        <SelectValue placeholder="Select your main category" />
                       </SelectTrigger>
                       <SelectContent>
                         {psychicCategories.map((category) => (
@@ -449,7 +449,7 @@ export default function PsychicRegister() {
                       </SelectContent>
                     </Select>
                     <p className="text-xs mt-1" style={{ color: colors.bgLight }}>
-                      Choisissez la catégorie qui décrit le mieux votre don principal
+                      Choose the category that best describes your main gift
                     </p>
                   </div>
 
@@ -457,19 +457,19 @@ export default function PsychicRegister() {
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <User className="h-4 w-4" style={{ color: colors.secondary }} />
-                      Genre *
+                      Gender *
                     </Label>
                     <Select onValueChange={handleGenderChange} required>
-                      <SelectTrigger style={{ 
+                      <SelectTrigger style={{
                         borderColor: colors.secondary + '30',
                         color: colors.primary
                       }}>
-                        <SelectValue placeholder="Sélectionnez votre genre" />
+                        <SelectValue placeholder="Select your gender" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="male">Homme</SelectItem>
-                        <SelectItem value="female">Femme</SelectItem>
-                        <SelectItem value="other">Autre / Préfère ne pas dire</SelectItem>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other / Prefer not to say</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -480,13 +480,13 @@ export default function PsychicRegister() {
                   <div className="space-y-2">
                     <Label htmlFor="location" className="flex items-center gap-2">
                       <MapPin className="h-4 w-4" style={{ color: colors.secondary }} />
-                      Lieu
+                      Location
                     </Label>
-                    <Input 
-                      id="location" 
+                    <Input
+                      id="location"
                       value={formData.location}
                       onChange={handleChange}
-                      placeholder="ex : Paris, France"
+                      placeholder="e.g. London, UK"
                       style={{ 
                         borderColor: colors.secondary + '30',
                         color: colors.primary
@@ -497,20 +497,20 @@ export default function PsychicRegister() {
                   <div className="space-y-2">
                     <Label htmlFor="languages" className="flex items-center gap-2">
                       <Globe className="h-4 w-4" style={{ color: colors.secondary }} />
-                      Langues
+                      Languages
                     </Label>
-                    <Input 
-                      id="languages" 
+                    <Input
+                      id="languages"
                       value={formData.languages}
                       onChange={handleChange}
-                      placeholder="Français, Anglais, Espagnol"
+                      placeholder="English, French, Spanish"
                       style={{ 
                         borderColor: colors.secondary + '30',
                         color: colors.primary
                       }}
                     />
                     <p className="text-xs" style={{ color: colors.bgLight }}>
-                      Séparez plusieurs langues par des virgules
+                      Separate multiple languages with commas
                     </p>
                   </div>
                 </div>
@@ -520,7 +520,7 @@ export default function PsychicRegister() {
                   <div className="space-y-2">
                     <Label htmlFor="experience" className="flex items-center gap-2">
                       <Calendar className="h-4 w-4" style={{ color: colors.secondary }} />
-                      Expérience (années)
+                      Experience (years)
                     </Label>
                     <Input 
                       id="experience" 
@@ -540,13 +540,13 @@ export default function PsychicRegister() {
                   <div className="space-y-2">
                     <Label htmlFor="specialization" className="flex items-center gap-2">
                       <Award className="h-4 w-4" style={{ color: colors.secondary }} />
-                      Spécialisation
+                      Specialization
                     </Label>
-                    <Input 
-                      id="specialization" 
+                    <Input
+                      id="specialization"
                       value={formData.specialization}
                       onChange={handleChange}
-                      placeholder="ex : Amour & Relations"
+                      placeholder="e.g. Love & Relationships"
                       style={{ 
                         borderColor: colors.secondary + '30',
                         color: colors.primary
@@ -559,20 +559,20 @@ export default function PsychicRegister() {
                 <div className="space-y-2">
                   <Label htmlFor="abilities" className="flex items-center gap-2">
                     <Award className="h-4 w-4" style={{ color: colors.secondary }} />
-                    Capacités Spéciales
+                    Special Abilities
                   </Label>
-                  <Input 
-                    id="abilities" 
+                  <Input
+                    id="abilities"
                     value={formData.abilities}
                     onChange={handleChange}
-                    placeholder="Tarot, Astrologie, Numérologie, Médiumnité"
-                    style={{ 
+                    placeholder="Tarot, Astrology, Numerology, Mediumship"
+                    style={{
                       borderColor: colors.secondary + '30',
                       color: colors.primary
                     }}
                   />
                   <p className="text-xs" style={{ color: colors.bgLight }}>
-                    Séparez plusieurs capacités par des virgules
+                    Separate multiple abilities with commas
                   </p>
                 </div>
 
@@ -580,13 +580,13 @@ export default function PsychicRegister() {
                 <div className="space-y-2">
                   <Label htmlFor="bio" className="flex items-center gap-2">
                     <Sparkles className="h-4 w-4" style={{ color: colors.secondary }} />
-                    Biographie / Spécialisation *
+                    Biography / Specialization *
                   </Label>
                   <textarea
                     id="bio"
                     rows={4}
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 resize-none transition-all duration-200 focus:scale-[1.01]"
-                    placeholder="Parlez-nous de vos dons spirituels, de votre expérience et de vos domaines d'expertise..."
+                    placeholder="Tell us about your spiritual gifts, your experience and your areas of expertise..."
                     required
                     value={formData.bio}
                     onChange={handleChange}
@@ -597,7 +597,7 @@ export default function PsychicRegister() {
                     }}
                   />
                   <p className="text-xs" style={{ color: colors.bgLight }}>
-                    Décrivez vos capacités psychiques, vos styles de lecture et ce que les clients peuvent attendre
+                    Describe your psychic abilities, your reading styles and what clients can expect
                   </p>
                 </div>
 
@@ -614,12 +614,12 @@ export default function PsychicRegister() {
                   {(loading || isUploadingImage) ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      {isUploadingImage ? "Téléchargement de l'image..." : "Soumission de la candidature..."}
+                      {isUploadingImage ? "Uploading image..." : "Submitting application..."}
                     </>
                   ) : (
                     <>
                       <UserPlus className="mr-2 h-5 w-5" />
-                      Postuler comme Médium
+                      Apply as a Psychic
                     </>
                   )}
                 </Button>
@@ -630,10 +630,10 @@ export default function PsychicRegister() {
                 style={{ borderColor: colors.secondary + '20', color: colors.bgLight }}>
                 <p className="flex items-center justify-center gap-2">
                   <Shield className="h-4 w-4" style={{ color: colors.success }} />
-                  Vos informations sont sécurisées et cryptées
+                  Your information is secure and encrypted
                 </p>
                 <p className="mt-1 text-xs">
-                  En postulant, vous acceptez nos Conditions d'utilisation et notre Politique de confidentialité
+                  By applying, you agree to our Terms of Use and Privacy Policy
                 </p>
               </div>
             </CardContent>
@@ -643,8 +643,8 @@ export default function PsychicRegister() {
         {/* Footer Note */}
         <div className="text-center mt-8">
           <p className="text-sm" style={{ color: colors.bgLight }}>
-            <span className="font-bold" style={{ color: colors.primary }}>Note :</span> 
-            {" "}Toutes les candidatures sont examinées manuellement. L'approbation peut prendre 24 à 48 heures.
+            <span className="font-bold" style={{ color: colors.primary }}>Note:</span>
+            {" "}All applications are reviewed manually. Approval can take 24 to 48 hours.
           </p>
         </div>
       </div>
