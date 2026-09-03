@@ -711,6 +711,7 @@ const PsychicChats = () => {
   const typingTimeoutRef = useRef(null);
   const selectedSessionRef = useRef(null);
   const syncTimerRef = useRef(null);
+  const endHandledRef = useRef(null); // session id whose "ended" cleanup already ran
   const ringIntervalRef = useRef(null);
   const callDurationRef = useRef(null);
   const peerConnectionRef = useRef(null);
@@ -1983,17 +1984,20 @@ const PsychicChats = () => {
         }));
        
         if (timerData.remainingSeconds <= 0 || timerData.status === 'completed') {
-          console.log('⏰ Session ended on backend, cleaning up');
-          setActiveSession(null);
-          setCountdownSeconds(0);
-          setTimerPaused(false);
-         
-          if (syncTimerRef.current) {
-            clearInterval(syncTimerRef.current);
-            syncTimerRef.current = null;
+          if (endHandledRef.current !== activeSession._id) {
+            endHandledRef.current = activeSession._id;
+            console.log('⏰ Session ended on backend, cleaning up');
+            setCountdownSeconds(0);
+            setTimerPaused(false);
+
+            if (syncTimerRef.current) {
+              clearInterval(syncTimerRef.current);
+              syncTimerRef.current = null;
+            }
+
+            toast.info("Session has ended", { duration: 3000 });
+            setActiveSession(null);
           }
-         
-          toast.info("Session has ended", { duration: 3000 });
         }
        
         return timerData;
@@ -2005,8 +2009,12 @@ const PsychicChats = () => {
 
   useEffect(() => {
     if (activeSession?.status === 'active') {
+      // a live session is running again — allow its "ended" cleanup to fire once
+      if (endHandledRef.current && endHandledRef.current !== activeSession._id) {
+        endHandledRef.current = null;
+      }
       syncTimerWithBackend(true);
-     
+
       syncTimerRef.current = setInterval(() => {
         syncTimerWithBackend();
       }, 5000);
@@ -2532,21 +2540,21 @@ useEffect(() => {
 
     socketRef.current.on("session_ended", (data) => {
       console.log('🏁 Session ended (psychic):', data);
-   
-      if (activeSession?._id === data.requestId) {
-        setActiveSession(null);
+
+      const endedId = data?.requestId;
+      if (endedId && endHandledRef.current !== endedId) {
+        endHandledRef.current = endedId;
         setCountdownSeconds(0);
         setTimerPaused(false);
-       
+
         if (syncTimerRef.current) {
           clearInterval(syncTimerRef.current);
           syncTimerRef.current = null;
         }
-       
+
         checkActiveSession(true);
-        toast.success("Session ended successfully", {
-          duration: 3000
-        });
+        toast.success("Session ended successfully", { duration: 3000 });
+        setActiveSession(null);
       }
     });
 
