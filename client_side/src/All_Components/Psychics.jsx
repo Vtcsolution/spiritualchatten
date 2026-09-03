@@ -60,6 +60,9 @@ const Psychics = () => {
   const [socketConnected, setSocketConnected] = useState(false);
   const subscribedPsychicsRef = useRef(new Set());
 
+  // Scroll target when the page number changes
+  const resultsRef = useRef(null);
+
   // State
   const [psychics, setPsychics] = useState([]);
   const [filteredPsychics, setFilteredPsychics] = useState([]);
@@ -405,8 +408,15 @@ const Psychics = () => {
     }
 
     setFilteredPsychics(result);
-    setCurrentPage(1);
+    // NOTE: do NOT reset the page here — this effect also re-runs on every
+    // live status refresh (psychicStatuses), which would yank the user back
+    // to page 1 every few seconds. Page reset lives in its own effect below.
   }, [psychics, searchQuery, availableOnly, psychicStatuses]);
+
+  // Reset to page 1 only when the user changes what they're filtering by
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, availableOnly]);
 
   // Pagination — show exactly one page (itemsPerPage) of results at a time
   const totalPages = Math.max(1, Math.ceil(filteredPsychics.length / itemsPerPage));
@@ -425,7 +435,7 @@ const Psychics = () => {
     const next = Math.min(Math.max(1, page), totalPages);
     if (next === currentPage) return;
     setCurrentPage(next);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   // Handle chat initiation
@@ -732,7 +742,7 @@ const Psychics = () => {
       </div>
 
       {/* Psychics Grid */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div ref={resultsRef} className="max-w-7xl mx-auto px-4 py-8 scroll-mt-24">
         {displayedPsychics.length === 0 ? (
           <div className="text-center py-16">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4"
@@ -755,8 +765,15 @@ const Psychics = () => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-              <AnimatePresence>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentPage}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -16 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12"
+              >
                 {displayedPsychics.map((psychic, index) => {
                   const psychicStatus = getPsychicStatus(psychic._id);
                   const status = statusConfig[psychicStatus] || statusConfig.offline;
@@ -764,14 +781,13 @@ const Psychics = () => {
                   const rating = ratingSummaries[psychic._id] || psychic.rating || { avgRating: 4.5, totalReviews: 100 };
                   const psychicCategory = getPsychicCategory(psychic);
                   const memberSince = psychic.createdAt ? new Date(psychic.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : "Recently";
-                  
+
                   return (
                     <motion.div
                       key={psychic._id}
-                      initial={{ opacity: 0, y: 30 }}
+                      initial={{ opacity: 0, y: 24 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -30 }}
-                      transition={{ delay: index * 0.08, duration: 0.5 }}
+                      transition={{ delay: index * 0.06, duration: 0.4, ease: "easeOut" }}
                       className="relative group h-full"
                     >
                       <div 
@@ -961,8 +977,8 @@ const Psychics = () => {
                     </motion.div>
                   );
                 })}
-              </AnimatePresence>
-            </div>
+              </motion.div>
+            </AnimatePresence>
 
             {filteredPsychics.length > 0 && (
               <div className="flex flex-col items-center gap-4 mt-8">
