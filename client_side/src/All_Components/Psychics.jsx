@@ -24,6 +24,7 @@ import {
   X,
   Check,
   ChevronRight,
+  ChevronLeft,
   Loader,
   Wifi,
   WifiOff,
@@ -64,7 +65,6 @@ const Psychics = () => {
   const [filteredPsychics, setFilteredPsychics] = useState([]);
   const [displayedPsychics, setDisplayedPsychics] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableOnly, setAvailableOnly] = useState(false);
@@ -74,7 +74,6 @@ const Psychics = () => {
   // Pagination
   const [itemsPerPage] = useState(6);
   const [currentPage, setCurrentPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
 
   // Status configuration
   const statusConfig = {
@@ -288,8 +287,9 @@ const Psychics = () => {
   };
 
   const isPsychicAvailable = (psychicId) => {
-    const status = getPsychicStatus(psychicId);
-    return status === 'online' || status === 'away';
+    // Only a psychic who is actually logged in and set to "online" can be
+    // contacted. Away / busy / offline all disable the Chat & Call buttons.
+    return getPsychicStatus(psychicId) === 'online';
   };
 
   const getPsychicCategory = (psychic) => {
@@ -408,21 +408,24 @@ const Psychics = () => {
     setCurrentPage(1);
   }, [psychics, searchQuery, availableOnly, psychicStatuses]);
 
-  // Pagination effect
+  // Pagination — show exactly one page (itemsPerPage) of results at a time
+  const totalPages = Math.max(1, Math.ceil(filteredPsychics.length / itemsPerPage));
+
   useEffect(() => {
-    const endIndex = currentPage * itemsPerPage;
-    const newDisplayed = filteredPsychics.slice(0, endIndex);
-    setDisplayedPsychics(newDisplayed);
-    setHasMore(endIndex < filteredPsychics.length);
+    const start = (currentPage - 1) * itemsPerPage;
+    setDisplayedPsychics(filteredPsychics.slice(start, start + itemsPerPage));
   }, [filteredPsychics, currentPage, itemsPerPage]);
 
-  const loadMorePsychics = () => {
-    if (isLoadingMore) return;
-    setIsLoadingMore(true);
-    setTimeout(() => {
-      setCurrentPage(prev => prev + 1);
-      setIsLoadingMore(false);
-    }, 500);
+  // Keep currentPage in range if the result set shrinks
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [totalPages, currentPage]);
+
+  const goToPage = (page) => {
+    const next = Math.min(Math.max(1, page), totalPages);
+    if (next === currentPage) return;
+    setCurrentPage(next);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Handle chat initiation
@@ -961,30 +964,51 @@ const Psychics = () => {
               </AnimatePresence>
             </div>
 
-            {hasMore && (
-              <div className="text-center mt-8">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={loadMorePsychics}
-                  disabled={isLoadingMore}
-                  className="rounded-full px-8 py-6 min-w-[200px] transition-all hover:scale-105"
-                  style={{ borderColor: colors.antiqueGold, color: colors.deepPurple, backgroundColor: colors.softIvory }}
-                >
-                  {isLoadingMore ? (
-                    <>
-                      <Loader className="h-5 w-5 mr-2 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      Load More Psychics
-                      <ChevronRight className="ml-2 h-5 w-5" />
-                    </>
-                  )}
-                </Button>
-                <p className="text-sm mt-4" style={{ color: colors.deepPurple + "CC" }}>
+            {filteredPsychics.length > 0 && (
+              <div className="flex flex-col items-center gap-4 mt-8">
+                {totalPages > 1 && (
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => goToPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="rounded-full h-10 px-4 transition-all hover:scale-105 disabled:opacity-40"
+                      style={{ borderColor: colors.antiqueGold, color: colors.deepPurple, backgroundColor: colors.softIvory }}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Prev
+                    </Button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <Button
+                        key={page}
+                        onClick={() => goToPage(page)}
+                        className="rounded-full h-10 w-10 p-0 text-sm font-semibold transition-all hover:scale-105"
+                        style={
+                          page === currentPage
+                            ? { backgroundColor: colors.deepPurple, color: colors.softIvory }
+                            : { backgroundColor: colors.softIvory, color: colors.deepPurple, border: `1px solid ${colors.antiqueGold}` }
+                        }
+                      >
+                        {page}
+                      </Button>
+                    ))}
+
+                    <Button
+                      variant="outline"
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="rounded-full h-10 px-4 transition-all hover:scale-105 disabled:opacity-40"
+                      style={{ borderColor: colors.antiqueGold, color: colors.deepPurple, backgroundColor: colors.softIvory }}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                )}
+                <p className="text-sm" style={{ color: colors.deepPurple + "CC" }}>
                   Showing {displayedPsychics.length} of {filteredPsychics.length} psychics
+                  {totalPages > 1 && ` · Page ${currentPage} of ${totalPages}`}
                 </p>
               </div>
             )}

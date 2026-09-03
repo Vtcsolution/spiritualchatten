@@ -235,12 +235,16 @@ const profiles = [
       password: DEMO_PASSWORD,
       isVerified: true,
       isActive: true,
-      availability: true,
+      // Seeded psychics start OFFLINE and unavailable. Their real status is
+      // only set to "online" when that psychic actually logs in and goes live;
+      // the frontend enables Chat/Call solely for genuinely-online psychics.
+      status: 'offline',
+      availability: false,
       type: 'Human Psychic',
       totalRatings: p.totalRatings,
       averageRating: p.averageRating,
-      lastSeen: new Date(),
-      lastActive: new Date(),
+      lastSeen: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      lastActive: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     });
     await doc.save(); // triggers password-hashing pre-save hook
     created++;
