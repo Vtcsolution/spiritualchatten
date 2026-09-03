@@ -435,7 +435,12 @@ const Psychics = () => {
     const next = Math.min(Math.max(1, page), totalPages);
     if (next === currentPage) return;
     setCurrentPage(next);
-    resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Only nudge the view up if the grid has scrolled above the viewport,
+    // so clicking a visible page number never yanks the page around.
+    const top = resultsRef.current?.getBoundingClientRect().top ?? 0;
+    if (top < 0) {
+      resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   // Handle chat initiation
@@ -765,15 +770,13 @@ const Psychics = () => {
           </div>
         ) : (
           <>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentPage}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12"
-              >
+            <motion.div
+              key={currentPage}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12"
+            >
                 {displayedPsychics.map((psychic, index) => {
                   const psychicStatus = getPsychicStatus(psychic._id);
                   const status = statusConfig[psychicStatus] || statusConfig.offline;
@@ -977,8 +980,7 @@ const Psychics = () => {
                     </motion.div>
                   );
                 })}
-              </motion.div>
-            </AnimatePresence>
+            </motion.div>
 
             {filteredPsychics.length > 0 && (
               <div className="flex flex-col items-center gap-4 mt-8">
