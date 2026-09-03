@@ -13,6 +13,28 @@ module.exports = (io, twilioService) => {
   // Store socket connections
   const psychicConnections = new Map();
   const userConnections = new Map();
+
+  // Keep the psychic-list presence (cache + the rooms the psychics page
+  // listens on) in sync when a psychic connects/disconnects the call socket.
+  const broadcastPsychicPresence = (psychicId, status) => {
+    try {
+      const id = psychicId.toString();
+      if (global.psychicStatusCache) {
+        global.psychicStatusCache.set(id, {
+          status,
+          lastSeen: new Date(),
+          lastActive: new Date(),
+          timestamp: Date.now(),
+          lastUpdate: Date.now()
+        });
+      }
+      const data = { psychicId: id, status, timestamp: Date.now(), lastSeen: new Date() };
+      io.to(`psychic_status_${id}`).emit('psychic_status_changed', data);
+      io.to('psychic_list_status').emit('psychic_status_update', data);
+    } catch (e) {
+      console.error('broadcastPsychicPresence error:', e.message);
+    }
+  };
   
   // Function to broadcast timer updates to all participants in a call
   const broadcastTimerUpdate = async (callSessionId) => {
@@ -78,7 +100,8 @@ module.exports = (io, twilioService) => {
           psychic.socketId = socket.id;
           psychic.lastSeen = new Date();
           await psychic.save();
-          
+          broadcastPsychicPresence(psychicId, 'online');
+
           console.log(`✅ Psychic ${psychicId} registered`);
           
           socket.emit('registration-success', {
@@ -591,12 +614,13 @@ module.exports = (io, twilioService) => {
       // Clean up psychic connection
       if (socket.psychicId) {
         psychicConnections.delete(socket.psychicId);
-        
+
         await Psychic.findByIdAndUpdate(socket.psychicId, {
           socketId: null,
           status: 'offline',
           lastSeen: new Date()
         });
+        broadcastPsychicPresence(socket.psychicId, 'offline');
         
         // Check for active calls
         const activeCall = await ActiveCallSession.findOne({

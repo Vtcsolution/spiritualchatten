@@ -47,10 +47,17 @@ const initiateCall = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Psychic not found' });
     }
     
+    if (psychic.status === 'busy') {
+      return res.status(400).json({
+        success: false,
+        message: `${psychic.name} is on another call right now. Please try again in a few minutes.`,
+        psychicStatus: psychic.status
+      });
+    }
     if (psychic.status !== 'online' && psychic.status !== 'away') {
       return res.status(400).json({
         success: false,
-        message: 'Psychic is not available for calls right now',
+        message: `${psychic.name} is offline right now. Calls need the psychic to be online — try starting a chat, or check back when they're online.`,
         psychicStatus: psychic.status
       });
     }
