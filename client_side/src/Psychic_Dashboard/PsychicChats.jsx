@@ -2487,25 +2487,25 @@ useEffect(() => {
     });
 
     socketRef.current.on("timer_update", (data) => {
-      console.log('🔄 TIMER UPDATE (psychic):', data);
-     
-      const selectedUserId = selectedSessionRef.current?.user?._id;
-     
-      if (activeSession?._id === data.requestId || selectedUserId === data.userId) {
-        setCountdownSeconds(data.remainingSeconds);
-        setTimerPaused(data.isPaused || false);
-       
-        setActiveSession(prev => ({
+      if (!data || data.remainingSeconds === undefined) return;
+      // The server (timerService) is the single source of truth and only ticks
+      // an unpaused session — snap the displayed countdown to it every second.
+      setCountdownSeconds(data.remainingSeconds);
+      if (data.isPaused !== undefined) setTimerPaused(!!data.isPaused);
+
+      setActiveSession(prev => {
+        if (!prev || (data.requestId && prev._id !== data.requestId)) return prev;
+        return {
           ...prev,
           remainingSeconds: data.remainingSeconds,
-          status: data.status,
+          status: data.status || prev.status,
           paidSession: {
             ...prev?.paidSession,
             remainingSeconds: data.remainingSeconds,
-            isPaused: data.isPaused || false
+            ...(data.isPaused !== undefined ? { isPaused: !!data.isPaused } : {})
           }
-        }));
-      }
+        };
+      });
     });
 
     socketRef.current.on("timer_paused", (data) => {

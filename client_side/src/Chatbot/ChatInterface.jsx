@@ -1818,6 +1818,24 @@ const creditPlans = [
       }
     });
 
+    // Authoritative per-second timer from the server (timerService). One DB
+    // source, emitted to both user and psychic — snap the countdown to it.
+    socketRef.current.on('timer_update', (data) => {
+      if (!data || data.remainingSeconds === undefined) return;
+      setCountdownSeconds(data.remainingSeconds);
+    });
+
+    socketRef.current.on('timer_paused', () => {
+      clearLocalTimer(); // freeze the display; no more timer_update ticks arrive
+    });
+
+    socketRef.current.on('timer_resumed', () => {
+      setCountdownSeconds(prev => {
+        if (prev > 0) startLocalTimer(prev);
+        return prev;
+      });
+    });
+
     socketRef.current.on('credit_deduction', (data) => {
       console.log('💰 Credit deduction received:', data);
       if (activeSession?._id === data.requestId) {

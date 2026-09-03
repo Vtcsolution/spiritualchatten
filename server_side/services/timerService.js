@@ -37,84 +37,75 @@ class TimerService {
     console.log(`Started timer for request ${chatRequestId}`);
   }
 
-  // Process one second of timer
+  // Process one second of timer.
+  // Runs WITHOUT a MongoDB transaction so it works on standalone mongod
+  // (transactions require a replica set). A per-second timer tick does not
+  // need cross-document atomicity.
   async processSecond(chatRequestId) {
-    const session = await mongoose.startSession();
-    
     try {
-      await session.withTransaction(async () => {
-        const chatRequest = await ChatRequest.findById(chatRequestId).session(session);
-        if (!chatRequest || 
-            !chatRequest.paidSession.isActive || 
-            chatRequest.paidSession.isPaused ||
-            chatRequest.paidSession.remainingSeconds <= 0) {
-          
-          this.stopTimer(chatRequestId);
-          return;
+      const chatRequest = await ChatRequest.findById(chatRequestId);
+      if (!chatRequest ||
+          !chatRequest.paidSession ||
+          !chatRequest.paidSession.isActive ||
+          chatRequest.paidSession.isPaused ||
+          chatRequest.paidSession.remainingSeconds <= 0) {
+        this.stopTimer(chatRequestId);
+        return;
+      }
+
+      const before = chatRequest.paidSession.remainingSeconds;
+      chatRequest.paidSession.remainingSeconds = Math.max(0, before - 1);
+      const after = chatRequest.paidSession.remainingSeconds;
+
+      const paidTimer = await PaidTimer.findOne({ chatRequestId });
+      if (paidTimer) {
+        paidTimer.remainingSeconds = after;
+        paidTimer.lastDeductionTime = new Date();
+        await paidTimer.save();
+      }
+
+      // Minute boundary crossed -> deduct one minute's worth of credits
+      if (Math.floor(before / 60) > Math.floor(after / 60)) {
+        await this.deductMinute(chatRequest, null);
+      }
+
+      let expired = false;
+      if (after <= 0) {
+        await this.handleTimerExpiration(chatRequest, null);
+        this.stopTimer(chatRequestId);
+        expired = true;
+      }
+
+      await chatRequest.save();
+
+      if (global.io) {
+        const payload = {
+          requestId: chatRequest._id,
+          remainingSeconds: after,
+          formattedTime: this.formatTime(after)
+        };
+        global.io.to(`user_${chatRequest.user}`).emit('timer_update', payload);
+        global.io.to(`psychic_${chatRequest.psychic}`).emit('timer_update', payload);
+        global.io.to(`chat_request_${chatRequest._id}`).emit('timer_update', payload);
+
+        if (expired) {
+          const endData = { requestId: chatRequest._id, reason: 'expired', remainingSeconds: 0 };
+          global.io.to(`user_${chatRequest.user}`).emit('session_ended', endData);
+          global.io.to(`psychic_${chatRequest.psychic}`).emit('session_ended', endData);
+          global.io.to(`chat_request_${chatRequest._id}`).emit('session_ended', endData);
         }
 
-        // Update remaining seconds
-        chatRequest.paidSession.remainingSeconds -= 1;
-        
-        // Update paid timer if exists
-        const paidTimer = await PaidTimer.findOne({ chatRequestId }).session(session);
-        if (paidTimer) {
-          paidTimer.remainingSeconds = chatRequest.paidSession.remainingSeconds;
-          paidTimer.lastDeductionTime = new Date();
-          await paidTimer.save({ session });
-        }
-
-        // Check if second boundary crossed for real-time updates
-        const oldTotalSeconds = Math.floor(chatRequest.paidSession.remainingSeconds + 1);
-        const newTotalSeconds = Math.floor(chatRequest.paidSession.remainingSeconds);
-        
-        // Check if minute boundary crossed (for deductions)
-        const oldMinutes = Math.floor(oldTotalSeconds / 60);
-        const newMinutes = Math.floor(newTotalSeconds / 60);
-
-        if (newMinutes < oldMinutes) {
-          // Minute has passed, deduct balance
-          await this.deductMinute(chatRequest, session);
-        }
-
-        // Check if timer expired
-        if (chatRequest.paidSession.remainingSeconds <= 0) {
-          await this.handleTimerExpiration(chatRequest, session);
-          this.stopTimer(chatRequestId);
-        }
-
-        await chatRequest.save({ session });
-
-        // Emit real-time update every second for timer display
-        if (global.io) {
-          const remainingTime = Math.max(0, chatRequest.paidSession.remainingSeconds);
-          
-          global.io.to(`user_${chatRequest.user}`).emit('timer_update', {
+        const wallet = await Wallet.findOne({ userId: chatRequest.user });
+        if (wallet) {
+          global.io.to(`user_${chatRequest.user}`).emit('wallet_balance_update', {
             requestId: chatRequest._id,
-            remainingSeconds: remainingTime,
-            formattedTime: this.formatTime(remainingTime)
+            balance: wallet.credits ?? wallet.credits,
+            remainingMinutes: Math.floor((wallet.credits ?? wallet.credits) / (chatRequest.ratePerMin || 1))
           });
-
-          global.io.to(`psychic_${chatRequest.psychic}`).emit('timer_update', {
-            requestId: chatRequest._id,
-            remainingSeconds: remainingTime,
-            formattedTime: this.formatTime(remainingTime)
-          });
-
-          // Emit balance update every second for real-time display
-          const wallet = await Wallet.findOne({ userId: chatRequest.user }).session(session);
-          if (wallet) {
-            global.io.to(`user_${chatRequest.user}`).emit('wallet_balance_update', {
-              requestId: chatRequest._id,
-              balance: wallet.balance,
-              remainingMinutes: Math.floor(wallet.balance / chatRequest.ratePerMin)
-            });
-          }
         }
-      });
+      }
     } catch (error) {
-    } finally {
-      session.endSession();
+      console.error('timer processSecond error:', error.message);
     }
   }
 
@@ -140,17 +131,17 @@ class TimerService {
       // Deduct one minute's rate
       const amountToDeduct = chatRequest.ratePerMin;
       
-      if (wallet.balance >= amountToDeduct) {
+      if (wallet.credits >= amountToDeduct) {
         // Perform deduction
-        wallet.balance -= amountToDeduct;
-        chatRequest.remainingBalance = wallet.balance;
+        wallet.credits -= amountToDeduct;
+        chatRequest.remainingBalance = wallet.credits;
         
         // Record deduction
         chatRequest.deductions.push({
           amount: amountToDeduct,
           timestamp: new Date(),
           secondsUsed: 60,
-          remainingBalance: wallet.balance
+          remainingBalance: wallet.credits
         });
 
         chatRequest.totalAmountPaid = (chatRequest.totalAmountPaid || 0) + amountToDeduct;
@@ -171,8 +162,8 @@ class TimerService {
           data: {
             chatRequestId: chatRequest._id,
             amount: amountToDeduct,
-            remainingBalance: wallet.balance,
-            remainingMinutes: Math.floor(wallet.balance / chatRequest.ratePerMin)
+            remainingBalance: wallet.credits,
+            remainingMinutes: Math.floor(wallet.credits / chatRequest.ratePerMin)
           },
           chatRequestId: chatRequest._id
         });
@@ -183,21 +174,21 @@ class TimerService {
         if (global.io) {
           global.io.to(`user_${chatRequest.user}`).emit('balance_updated', {
             requestId: chatRequest._id,
-            newBalance: wallet.balance,
+            newBalance: wallet.credits,
             deductedAmount: amountToDeduct,
             remainingSeconds: chatRequest.paidSession.remainingSeconds
           });
 
           // Also emit wallet update for header
           global.io.to(`user_${chatRequest.user}`).emit('wallet_update', {
-            balance: wallet.balance,
-            credits: wallet.credits || wallet.balance // Use balance as credits if credits not set
+            balance: wallet.credits,
+            credits: wallet.credits || wallet.credits // Use balance as credits if credits not set
           });
         }
 
         // Check for low balance
-        if (wallet.balance < chatRequest.ratePerMin) {
-          const remainingMinutes = Math.floor(wallet.balance / chatRequest.ratePerMin);
+        if (wallet.credits < chatRequest.ratePerMin) {
+          const remainingMinutes = Math.floor(wallet.credits / chatRequest.ratePerMin);
           const lowBalanceNotification = new Notification({
             recipient: chatRequest.user,
             recipientModel: 'User',
@@ -208,7 +199,7 @@ class TimerService {
             message: `Only ${remainingMinutes} minute(s) remaining`,
             data: {
               chatRequestId: chatRequest._id,
-              remainingBalance: wallet.balance,
+              remainingBalance: wallet.credits,
               remainingMinutes: remainingMinutes
             },
             chatRequestId: chatRequest._id
@@ -220,14 +211,14 @@ class TimerService {
             global.io.to(`user_${chatRequest.user}`).emit('balance_low', {
               requestId: chatRequest._id,
               message: `Low balance: ${remainingMinutes} minute(s) remaining`,
-              remainingBalance: wallet.balance
+              remainingBalance: wallet.credits
             });
           }
         }
       } else {
         console.log('Insufficient balance for deduction:', {
           userId: chatRequest.user,
-          currentBalance: wallet.balance,
+          currentBalance: wallet.credits,
           required: amountToDeduct
         });
         
@@ -340,8 +331,8 @@ class TimerService {
       const wallet = await Wallet.findOne({ userId: chatRequest.user }).session(session);
       if (wallet) {
         global.io.to(`user_${chatRequest.user}`).emit('wallet_update', {
-          balance: wallet.balance,
-          credits: wallet.credits || wallet.balance
+          balance: wallet.credits,
+          credits: wallet.credits || wallet.credits
         });
       }
     }

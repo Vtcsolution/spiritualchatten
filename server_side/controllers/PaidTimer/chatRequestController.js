@@ -6,6 +6,7 @@ const Wallet = require('../../models/Wallet');
 const User = require('../../models/User');
 const Psychic = require('../../models/HumanChat/Psychic');
 const ActiveCallSession = require('../../models/CallSession/ActiveCallSession');
+const timerService = require('../../services/timerService');
 
 const mongoose = require('mongoose');
 // Helper function for wallet locking/unlocking
@@ -741,6 +742,9 @@ exports.startPaidSession = async (req, res) => {
       isPaused: false
     };
     await chatRequest.save();
+    // Start the single authoritative per-second ticker (emits timer_update to
+    // both the user_<id> and psychic_<id> rooms every second from one DB source)
+    timerService.startTimerForRequest(chatRequest._id.toString());
     // Unlock wallet
     wallet.lock = false;
     await wallet.save();
@@ -932,16 +936,12 @@ exports.pauseTimer = async (req, res) => {
       isRead: false
     });
     await notification.save();
-    // Emit real-time event
-    const room = userRole === 'psychic'
-      ? `user_${chatRequest.user}`
-      : `psychic_${chatRequest.psychic}`;
-   
-    req.io.to(room).emit('timer_paused', {
-      requestId: chatRequest._id,
-      pausedBy: userRole,
-      pausedAt: new Date()
-    });
+    // Stop the authoritative ticker
+    timerService.pauseTimer(chatRequest._id.toString());
+    // Emit to BOTH sides so the timer freezes everywhere in real time
+    const pausePayload = { requestId: chatRequest._id, pausedBy: userRole, pausedAt: new Date() };
+    req.io.to(`user_${chatRequest.user}`).emit('timer_paused', pausePayload);
+    req.io.to(`psychic_${chatRequest.psychic}`).emit('timer_paused', pausePayload);
     res.json({
       success: true,
       message: 'Timer paused successfully',
@@ -1026,16 +1026,12 @@ exports.resumeTimer = async (req, res) => {
       isRead: false
     });
     await notification.save();
-    // Emit real-time event
-    const room = userRole === 'psychic'
-      ? `user_${chatRequest.user}`
-      : `psychic_${chatRequest.psychic}`;
-   
-    req.io.to(room).emit('timer_resumed', {
-      requestId: chatRequest._id,
-      resumedBy: userRole,
-      resumedAt: new Date()
-    });
+    // Restart the authoritative ticker
+    timerService.resumeTimer(chatRequest._id.toString());
+    // Emit to BOTH sides so the timer resumes everywhere in real time
+    const resumePayload = { requestId: chatRequest._id, resumedBy: userRole, resumedAt: new Date() };
+    req.io.to(`user_${chatRequest.user}`).emit('timer_resumed', resumePayload);
+    req.io.to(`psychic_${chatRequest.psychic}`).emit('timer_resumed', resumePayload);
     res.json({
       success: true,
       message: 'Timer resumed successfully',
@@ -1123,6 +1119,9 @@ exports.stopTimer = async (req, res) => {
         await paidTimer.save();
       }
       
+      // Stop the authoritative ticker so no more timer_update ticks go out
+      timerService.stopTimer(chatRequest._id.toString());
+
       // Socket emissions
       if (req.io) {
         const endData = {
@@ -1133,7 +1132,7 @@ exports.stopTimer = async (req, res) => {
           remainingSeconds: remainingSeconds,
           newBalance: wallet.credits
         };
-        
+
         req.io.to(`user_${chatRequest.user}`).emit('session_ended', endData);
         req.io.to(`psychic_${chatRequest.psychic}`).emit('session_ended', endData);
         req.io.to(`chat_request_${chatRequest._id}`).emit('session_ended', endData);
