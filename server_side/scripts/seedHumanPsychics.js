@@ -229,8 +229,13 @@ const profiles = [
   let created = 0;
   for (const p of profiles) {
     const email = p.name.toLowerCase().replace(/[^a-z]+/g, '.').replace(/^\.|\.$/g, '') + DEMO_DOMAIN;
+    // Keep demo rates low (0.79–1.99 credits/min) so a small test wallet can
+    // actually start and hold a chat. Real psychics set their own rate.
+    const demoRate = +(0.79 + (i % 5) * 0.3).toFixed(2);
+
     const doc = new Psychic({
       ...p,
+      ratePerMin: demoRate,
       email,
       password: DEMO_PASSWORD,
       isVerified: true,
