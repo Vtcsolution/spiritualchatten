@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../../middleware/auth');
 const { protectPsychic } = require('../../middleware/PsychicMiddleware');
+const { protectAny } = require('../../middleware/protectAny');
 const {
   sendChatRequest,
   acceptChatRequest,
@@ -45,14 +46,20 @@ router.get('/history', protect, getChatHistory);
 router.get('/pending/:psychicId', protect, checkPendingRequest);
 router.get('/active/:psychicId', protect, checkActiveRequest);
 router.delete('/requests/:requestId', protect, cancelChatRequest);
+// Timer/session sync — legitimately called by BOTH the user and the psychic
+// side of a paid chat, so accept either token (getTimerData does its own
+// user-or-psychic authorization check on the chat request).
+router.get('/timer/:requestId', protectAny, getTimerData);
 // Psychic routes
-router.get('/timer/:requestId', protect,getTimerData  )
 router.post('/accept-request', protectPsychic, acceptChatRequest);
 router.post('/reject-request', protectPsychic, rejectChatRequest);
 router.post('/pause-timer-psychic', protectPsychic, pauseTimer);
 router.post('/resume-timer-psychic', protectPsychic, resumeTimer);
 router.post('/stop-timer-psychic', protectPsychic, stopTimer);
-router.get('/active-session-psychic', protectPsychic, getActiveSession);
+// Psychic docs have no `role` field, so getActiveSession mis-detects the
+// psychic as a user and 404s. Use the psychic-specific controller, which
+// returns { success: true, data: null } when there is no active session.
+router.get('/active-session-psychic', protectPsychic, getPsychicActiveSession);
 router.get('/history-psychic', protectPsychic, getChatHistory);
 router.get('/wallet/balance', protect, getUserWalletBalance);
 router.post('/wallet/check-affordability', protect, checkAffordability);
