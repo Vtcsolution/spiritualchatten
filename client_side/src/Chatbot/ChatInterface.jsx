@@ -1694,19 +1694,12 @@ const creditPlans = [
           }
         }));
         
-        if (chatSessionId === selectedSessionRef.current?._id) {
-          setMessages(prev => {
-            const currentMsgs = prev[chatSessionId] || [];
-            if (!currentMsgs.some(m => m._id === message._id)) {
-              return {
-                ...prev,
-                [chatSessionId]: [...currentMsgs, { ...message, isBlocked: true }]
-              };
-            }
-            return prev;
-          });
-        }
-        
+        setMessages(prev => {
+          const currentMsgs = prev[chatSessionId] || [];
+          if (currentMsgs.some(m => m._id === message._id)) return prev;
+          return { ...prev, [chatSessionId]: [...currentMsgs, { ...message, isBlocked: true }] };
+        });
+
         toast.warning(
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-orange-500" />
@@ -1722,23 +1715,14 @@ const creditPlans = [
           audioRef.current.play().catch(err => console.log('Audio play error:', err));
         }
 
-        if (chatSessionId === selectedSessionRef.current?._id) {
-          console.log("Adding message to current session messages");
-          setMessages(prev => {
-            const currentMsgs = prev[chatSessionId] || [];
-            if (!currentMsgs.some(m => m._id === message._id)) {
-              return {
-                ...prev,
-                [chatSessionId]: [...currentMsgs, message]
-              };
-            }
-            return prev;
-          });
-          
-          socketRef.current.emit('message_read', {
-            messageId: message._id,
-            chatSessionId
-          });
+        setMessages(prev => {
+          const currentMsgs = prev[chatSessionId] || [];
+          if (currentMsgs.some(m => m._id === message._id)) return prev;
+          return { ...prev, [chatSessionId]: [...currentMsgs, message] };
+        });
+
+        if (chatSessionId === selectedSessionRef.current?._id && socketRef.current?.connected) {
+          socketRef.current.emit('message_read', { messageId: message._id, chatSessionId });
         }
       }
 

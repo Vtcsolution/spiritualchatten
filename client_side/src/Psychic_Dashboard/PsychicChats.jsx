@@ -2706,19 +2706,12 @@ useEffect(() => {
           }
         }));
         
-        if (chatSessionId === selectedSessionRef.current?._id) {
-          setMessages(prev => {
-            const currentMsgs = prev[chatSessionId] || [];
-            if (!currentMsgs.some(m => m._id === message._id)) {
-              return {
-                ...prev,
-                [chatSessionId]: [...currentMsgs, { ...message, isBlocked: true }]
-              };
-            }
-            return prev;
-          });
-        }
-        
+        setMessages(prev => {
+          const currentMsgs = prev[chatSessionId] || [];
+          if (currentMsgs.some(m => m._id === message._id)) return prev;
+          return { ...prev, [chatSessionId]: [...currentMsgs, { ...message, isBlocked: true }] };
+        });
+
         toast.warning(
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-orange-500" />
@@ -2771,18 +2764,14 @@ useEffect(() => {
           }
         }
 
-        if (chatSessionId === selectedSessionRef.current?._id) {
-          setMessages(prev => {
-            const currentMsgs = prev[chatSessionId] || [];
-            if (!currentMsgs.some(m => m._id === message._id)) {
-              return {
-                ...prev,
-                [chatSessionId]: [...currentMsgs, message]
-              };
-            }
-            return prev;
-          });
-        }
+        // Store the message under its session key unconditionally (deduped).
+        // Gating this on selectedSessionRef caused incoming messages to be
+        // dropped whenever that ref lagged, forcing a page reload to see them.
+        setMessages(prev => {
+          const currentMsgs = prev[chatSessionId] || [];
+          if (currentMsgs.some(m => m._id === message._id)) return prev;
+          return { ...prev, [chatSessionId]: [...currentMsgs, message] };
+        });
       }
 
       // Update chat sessions

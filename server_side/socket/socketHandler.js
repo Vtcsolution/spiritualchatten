@@ -762,10 +762,15 @@ module.exports = (io) => {
           isBlocked: fullMessage.isBlocked
         });
 
+        // Always key the broadcast by the message's real chatSession id from
+        // the DB, so both sides store it under the same key regardless of what
+        // the client sent.
+        const canonicalSessionId = (fullMessage.chatSession && fullMessage.chatSession.toString()) || chatSessionId;
+
         // Prepare emit data with warning info
         const emitData = {
           message: fullMessage,
-          chatSessionId,
+          chatSessionId: canonicalSessionId,
           senderId: userId,
           senderRole: role,
           timestamp: Date.now(),
@@ -775,8 +780,8 @@ module.exports = (io) => {
           warningIssued: fullMessage.warningId ? true : false
         };
         
-        const chatRoom = `chat_${chatSessionId}`;
-        
+        const chatRoom = `chat_${canonicalSessionId}`;
+
         // If message is blocked, only send to sender with special flag
         if (fullMessage.isBlocked) {
           // Send to sender only (so they see it was blocked)
