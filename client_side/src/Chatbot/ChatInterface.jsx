@@ -812,6 +812,7 @@ const creditPlans = [
   const timerIntervalRef = useRef(null);
   const creditSimulationRef = useRef(null);
   const isMountedRef = useRef(true);
+  const endHandledRef = useRef(null); // session id whose end-cleanup already ran
 
   // ========== AXIOS INSTANCE ==========
   const chatApi = axios.create({
@@ -1068,34 +1069,51 @@ const creditPlans = [
 
   // ========== SESSION ENDED HANDLER ==========
   useEffect(() => {
+    // Runs the full stop (once) no matter which side ended the session, then
+    // shows the rating modal. Does NOT depend on a live activeSession closure,
+    // which is why the user timer used to keep running after the psychic ended.
     const handleSessionEnded = (data) => {
-      console.log('🏁 Session ended, showing rating modal:', data);
-      if (activeSession?._id === data.requestId && selectedPsychic) {
+      const id = data?.requestId;
+      if (id && endHandledRef.current === id) return;
+      if (id) endHandledRef.current = id;
+      console.log('🏁 Session ended (user):', data);
+
+      clearLocalTimer();
+      clearCreditSimulation();
+      setCountdownSeconds(0);
+      fetchUserWallet();
+
+      const endedPsychic = selectedPsychic;
+      setActiveSession(null);
+
+      toast.success('Session ended', { duration: 3000 });
+
+      if (endedPsychic && id) {
         setEndedSessionData({
-          psychic: selectedPsychic,
-          sessionId: data.requestId,
+          psychic: endedPsychic,
+          sessionId: id,
           duration: formatCountdown(countdownSeconds),
           endedAt: new Date()
         });
-       
-        checkIfAlreadyRated(data.requestId, selectedPsychic._id);
-       
-        setTimeout(() => {
-          setShowRatingModal(true);
-        }, 1500);
+        checkIfAlreadyRated(id, endedPsychic._id);
+        setTimeout(() => setShowRatingModal(true), 1500);
       }
     };
 
     if (socketRef.current) {
       socketRef.current.on('session_ended', handleSessionEnded);
+      socketRef.current.on('session_expired', handleSessionEnded);
+      socketRef.current.on('insufficient_balance', handleSessionEnded);
     }
 
     return () => {
       if (socketRef.current) {
         socketRef.current.off('session_ended', handleSessionEnded);
+        socketRef.current.off('session_expired', handleSessionEnded);
+        socketRef.current.off('insufficient_balance', handleSessionEnded);
       }
     };
-  }, [activeSession, selectedPsychic, countdownSeconds]);
+  }, [selectedPsychic, countdownSeconds]);
 
   // ========== CHECK IF ALREADY RATED ==========
   const checkIfAlreadyRated = async (sessionId, psychicId) => {
@@ -1431,6 +1449,7 @@ const creditPlans = [
         const session = response.data.data;
         if (session.status === 'active') {
           console.log('✅ Found active session:', session);
+          if (endHandledRef.current !== session._id) endHandledRef.current = null;
           setActiveSession(session);
           
           if (session.paidSession?.remainingSeconds) {
@@ -1870,6 +1889,7 @@ const creditPlans = [
       
       if (selectedPsychic?._id === psychicId) {
         console.log('✅ Matching psychic, updating UI');
+        endHandledRef.current = null; // fresh session — allow its end-cleanup to fire
         setPendingSession(null);
         setPendingAcceptedRequest(null);
         setShowAcceptModal(false);
@@ -1902,19 +1922,7 @@ const creditPlans = [
       }
     });
 
-    socketRef.current.on('session_ended', (data) => {
-      console.log('🏁 Session ended:', data);
-      if (activeSession?._id === data.requestId) {
-        setActiveSession(null);
-        setCountdownSeconds(0);
-        clearLocalTimer();
-        clearCreditSimulation();
-        fetchUserWallet();
-        toast.success("Session ended successfully", {
-          duration: 3000
-        });
-      }
-    });
+    // 'session_ended' is handled by the dedicated ref-guarded effect above.
 
     socketRef.current.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
