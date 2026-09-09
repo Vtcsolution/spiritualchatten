@@ -1615,21 +1615,30 @@ const isPsychicAvailable = (psychicId) => {
       <p className="text-lg whitespace-pre-line">{numerologyReport.narrative}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <h3 className="text-xl font-semibold">Levenspadgetal: {numerologyReport.numbers.lifePath.number}</h3>
-          <p>{numerologyReport.numbers.lifePath.description}</p>
+          <h3 className="text-xl font-semibold">Levenspadgetal: {numerologyReport.numbers.lifepath.number}</h3>
+          <p>{numerologyReport.numbers.lifepath.description}</p>
         </div>
         <div>
           <h3 className="text-xl font-semibold">Expressiegetal: {numerologyReport.numbers.expression.number}</h3>
           <p>{numerologyReport.numbers.expression.description}</p>
         </div>
         <div>
-          <h3 className="text-xl font-semibold">Hartgetal: {numerologyReport.numbers.soulUrge.number}</h3>
-          <p>{numerologyReport.numbers.soulUrge.description}</p>
+          <h3 className="text-xl font-semibold">Hartgetal: {numerologyReport.numbers.soulurge.number}</h3>
+          <p>{numerologyReport.numbers.soulurge.description}</p>
         </div>
         <div>
           <h3 className="text-xl font-semibold">Persoonlijkheidsgetal: {numerologyReport.numbers.personality.number}</h3>
           <p>{numerologyReport.numbers.personality.description}</p>
         </div>
+      </div>
+      <div className="text-center pt-2">
+        <Button
+          variant="brand"
+          className="rounded-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600"
+          onClick={() => navigate("/register")}
+        >
+          Chat met een coach
+        </Button>
       </div>
     </div>
   );
