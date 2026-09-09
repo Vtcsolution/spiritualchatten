@@ -9,7 +9,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Edit, Trash, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, Edit, Trash, DollarSign, ChevronLeft, ChevronRight, Sparkles, Download } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle, DialogTrigger
@@ -36,6 +37,8 @@ const AllUsers = () => {
   const [isAddingCredits, setIsAddingCredits] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [freeReportOnly, setFreeReportOnly] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -45,15 +48,16 @@ const AllUsers = () => {
 
   const handleBio = (bioo) => setBio(bioo);
 
-  const fetchPsychics = async (page = 1, limit = 10) => {
+  const fetchPsychics = async (page = 1, limit = 10, onlyFreeReport = freeReportOnly) => {
     try {
-      console.log('Admin token:', admin.token);
-      const response = await axios.get(`${import.meta.env.VITE_BASE_URL}/api/users/all?page=${page}&limit=${limit}`, {
-        headers: { Authorization: `Bearer ${admin.token}` },
-        withCredentials: true,
-      });
+      const response = await axios.get(
+        `${import.meta.env.VITE_BASE_URL}/api/users/all?page=${page}&limit=${limit}${onlyFreeReport ? "&freeReportOnly=true" : ""}`,
+        {
+          headers: { Authorization: `Bearer ${admin.token}` },
+          withCredentials: true,
+        }
+      );
 
-      console.log('API Response:', response.data);
       setPsychics(response.data.users || []);
       setPagination(response.data.pagination || {
         currentPage: 1,
@@ -72,8 +76,56 @@ const AllUsers = () => {
 
   useEffect(() => {
     setIsLoaded(true);
-    fetchPsychics();
-  }, []);
+    fetchPsychics(1, pagination.limit, freeReportOnly);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [freeReportOnly]);
+
+  // Export the email list of everyone who signed up via the free numerology
+  // report, so the admin can follow up with them (e.g. in a mail tool).
+  const handleExportFreeReportEmails = async () => {
+    setIsExporting(true);
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_BASE_URL}/api/users/all?page=1&limit=10000&freeReportOnly=true`,
+        {
+          headers: { Authorization: `Bearer ${admin.token}` },
+          withCredentials: true,
+        }
+      );
+      const users = response.data.users || [];
+      if (users.length === 0) {
+        toast.error("No numerology report signups to export yet.");
+        return;
+      }
+      const rows = [
+        ["Name", "Email", "Date of Birth", "Signed Up"],
+        ...users.map((u) => [
+          u.username || "",
+          u.email || "",
+          u.dob ? new Date(u.dob).toLocaleDateString() : "",
+          u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "",
+        ]),
+      ];
+      const csv = rows
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `numerology-report-signups-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${users.length} numerology report signups`);
+    } catch (err) {
+      console.error("Export error:", err);
+      toast.error("Failed to export signups");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const uploadImage = async (file) => {
     const formData = new FormData();
@@ -191,12 +243,32 @@ const AllUsers = () => {
           <h2 className='text-3xl font-extrabold text-center my-6'>All Users</h2>
           <div className="mx-4">
             <Card className="bg-white/10 border border-gray-200 backdrop-blur-md shadow-xl">
-              <CardHeader className="flex flex-row items-center">
+              <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
                 <div className="grid gap-2">
                   <CardTitle>Users Data</CardTitle>
                   <CardDescription>All Users listed below</CardDescription>
                 </div>
-               
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant={freeReportOnly ? "brand" : "outline"}
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setFreeReportOnly((prev) => !prev)}
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    {freeReportOnly ? "Showing: Numerology signups only" : "Show numerology signups only"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={handleExportFreeReportEmails}
+                    disabled={isExporting}
+                  >
+                    <Download className="h-4 w-4" />
+                    {isExporting ? "Exporting..." : "Export emails (CSV)"}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -204,6 +276,8 @@ const AllUsers = () => {
                     <TableRow>
                       <TableHead>Image</TableHead>
                       <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Source</TableHead>
                       <TableHead>Bio</TableHead>
                       <TableHead>Total Credits</TableHead>
                       <TableHead>Details</TableHead>
@@ -217,6 +291,16 @@ const AllUsers = () => {
                           <img src={psychic.image || "/images/default-profile.jpg"} alt="profile" className="w-10 h-10 rounded-full object-cover" />
                         </TableCell>
                         <TableCell>{psychic.username}</TableCell>
+                        <TableCell>{psychic.email}</TableCell>
+                        <TableCell>
+                          {psychic.hasRequestedFreeReport ? (
+                            <Badge className="gap-1 bg-violet-100 text-violet-700 hover:bg-violet-100">
+                              <Sparkles className="h-3 w-3" /> Numerology
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-400 text-sm">—</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {psychic.bio?.slice(0, 20)}...
                           <Dialog>

@@ -211,12 +211,17 @@ const getAllUsers = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const users = await User.find()
-      .select("username email image bio dob totalTime totalPayment createdAt")
+    // Optionally filter down to users who signed up via the free
+    // numerology report (so the admin can find/follow up with them by email)
+    const filter = req.query.freeReportOnly === "true" ? { hasRequestedFreeReport: true } : {};
+
+    const users = await User.find(filter)
+      .select("username email image bio dob hasRequestedFreeReport totalTime totalPayment createdAt")
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    const totalUsers = await User.countDocuments();
+    const totalUsers = await User.countDocuments(filter);
     const totalPages = Math.ceil(totalUsers / limit);
 
     const usersWithCredits = await Promise.all(users.map(async (user) => {
