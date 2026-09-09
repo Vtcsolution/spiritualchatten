@@ -15,31 +15,7 @@ const NumerologyReport = () => {
   const [report, setReport] = useState(location.state?.numerologyReport || null);
   const [userData, setUserData] = useState(location.state?.userData || null);
   const [showModal, setShowModal] = useState(!!location.state?.numerologyReport);
-  const [firstPsychicId, setFirstPsychicId] = useState(null);
   const [isLoading, setIsLoading] = useState(!location.state?.numerologyReport);
-
-  // Fetch first Tarot psychic (optional, runs only if needed)
-  useEffect(() => {
-    const fetchFirstTarotPsychic = async () => {
-      try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_BASE_URL}/api/psychics/type/Tarot`,
-          { withCredentials: true }
-        );
-        const psychics = res.data?.data || [];
-        if (psychics.length > 0) {
-          setFirstPsychicId(psychics[0]._id);
-        } else {
-          toast.error("Geen Tarot psychics gevonden.");
-        }
-      } catch (err) {
-        console.error("❌ Mislukt om Tarot psychics op te halen:", err.response?.data || err.message);
-        toast.error("Mislukt om Tarot psychic data te laden.");
-      }
-    };
-
-    fetchFirstTarotPsychic();
-  }, []);
 
   // Fetch report and user data if not provided in state
   useEffect(() => {
@@ -236,7 +212,7 @@ const NumerologyReport = () => {
                 Klaar om Meer te Ontdekken?
               </h2>
               <p className="text-gray-600 mb-6">
-                Verbind met een AI Tarot Psychic om dieper in je numerologische reis te duiken en verdere inzichten te ontgrendelen.
+                Chat met een van onze coaches om dieper in je numerologische reis te duiken en verdere inzichten te ontgrendelen.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                <Button
@@ -247,7 +223,7 @@ const NumerologyReport = () => {
     bg-[linear-gradient(270deg,#7c3aed,#4f46e5,#ec4899)] bg-[length:600%_600%]
     animate-[gradientShift_8s_ease_infinite,pulse_3s_ease-in-out_infinite]
   "
-  onClick={() => navigate("/register")}
+  onClick={() => navigate("/numerology")}
 >
   1 minuut gratis chat met een coach
 </Button>

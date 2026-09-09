@@ -20,49 +20,67 @@ const generateRefreshToken = (userId) => {
 };
 const registerUser = async (req, res) => {
   try {
-    const { username, email, password, confirmPassword } = req.body;
-    
-    // Validate required fields
-    if (!username || !email || !password || !confirmPassword) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Username, email, password, and confirm password are required' 
+    const { username: providedUsername, email, password, confirmPassword, name, dob } = req.body;
+
+    // Validate required fields. Username is optional as long as a name is
+    // provided (e.g. the free numerology report signup) — a unique username
+    // is then generated automatically.
+    if ((!providedUsername && !name) || !email || !password || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name (or username), email, password, and confirm password are required'
       });
     }
 
     // Validate password matching
     if (password !== confirmPassword) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Passwords do not match' 
+      return res.status(400).json({
+        success: false,
+        message: 'Passwords do not match'
       });
     }
 
     // Check for existing user by email
     const existingEmail = await User.findOne({ email });
     if (existingEmail) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Email already registered' 
+      return res.status(400).json({
+        success: false,
+        message: 'Email already registered'
       });
     }
 
-    // Check for existing username
-    const existingUsername = await User.findOne({ username });
-    if (existingUsername) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Username already taken' 
-      });
+    // Resolve a unique username: use the one provided, or derive one from
+    // the name and disambiguate automatically if it's already taken.
+    let username = providedUsername?.trim();
+    if (username) {
+      const existingUsername = await User.findOne({ username });
+      if (existingUsername) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username already taken'
+        });
+      }
+    } else {
+      const base = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20) || 'user';
+      username = base;
+      let attempt = 0;
+      while (await User.findOne({ username })) {
+        attempt += 1;
+        username = attempt < 5
+          ? `${base}${Math.floor(1000 + Math.random() * 9000)}`
+          : `${base}${Date.now().toString().slice(-6)}`;
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     // Step 1: Create new user
     const newUser = await User.create({
       username,
       email,
       password: hashedPassword,
+      ...(name && { firstName: name.trim().split(' ')[0], lastName: name.trim().split(' ').slice(1).join(' ') }),
+      ...(dob && { dob: new Date(dob), hasRequestedFreeReport: true }),
     });
 
     // Step 2: Create wallet with 2 free credits

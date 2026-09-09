@@ -18,7 +18,7 @@ import { debounce } from "lodash";
 import VideoSection from "./VideoSection";
 import io from 'socket.io-client';
 const Home = () => {
-  const { user, loading: authLoading, error: authError, setUser } = useAuth();
+  const { user, loading: authLoading, error: authError, setUser, register, login } = useAuth();
   const navigate = useNavigate();
   const [socket, setSocket] = useState(null);
   const socketRef = useRef(null);
@@ -50,6 +50,7 @@ const subscribedPsychicsRef = useRef(new Set());
     name: "",
     dob: "",
     email: "",
+    password: "",
     yourFirstName: "",
     yourLastName: "",
     yourBirthDate: "",
@@ -993,7 +994,7 @@ const isPsychicAvailable = (psychicId) => {
     setFormData((prev) => ({ ...prev, [name]: value.trim() }));
   };
   const handleNumerologyFormSubmit = async () => {
-    const requiredFields = ["name", "dob", "email"];
+    const requiredFields = ["name", "dob", "email", "password"];
     const missingFields = requiredFields.filter((field) => !formData[field]?.trim());
     if (missingFields.length > 0) {
       toast.error(`Missing required fields: ${missingFields
@@ -1010,8 +1011,39 @@ const isPsychicAvailable = (psychicId) => {
       toast.error("Invalid email format.");
       return;
     }
+    if (formData.password.length < 6) {
+      toast.error("Password must be at least 6 characters long.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      // Step 1: create an account (or sign in to an existing one with this
+      // email/password) so the visitor is immediately logged in.
+      let authResult = await register({
+        name: formData.name,
+        dob: formData.dob,
+        email: formData.email,
+        password: formData.password,
+        confirmPassword: formData.password,
+      });
+
+      if (!authResult.success && /already registered/i.test(authResult.message || "")) {
+        // An account already exists for this email — try logging in with
+        // the password they just entered instead of failing outright.
+        authResult = await login({ email: formData.email, password: formData.password });
+        if (!authResult.success) {
+          toast.error("An account with this email already exists. Please log in first, or use a different email.");
+          setIsSubmitting(false);
+          return;
+        }
+      } else if (!authResult.success) {
+        toast.error(authResult.message || "Failed to create your account.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Step 2: generate the numerology report
       const response = await axios.post(
         `${import.meta.env.VITE_BASE_URL}/api/generate-numerology-report`,
         {
@@ -1049,7 +1081,7 @@ const isPsychicAvailable = (psychicId) => {
             },
           },
         });
-        toast.success("Numerology report generated successfully!");
+        toast.success("Account created and numerology report generated!");
       } else {
         toast.error(response.data.message || "Failed to generate numerology report.");
       }
@@ -1599,7 +1631,23 @@ const isPsychicAvailable = (psychicId) => {
         />
         {emailError && <p className="text-red-500 text-sm">{emailError}</p>}
       </div>
- 
+      <div>
+        <Label>Password *</Label>
+        <br></br>
+        <Input
+          type="password"
+          name="password"
+          value={formData.password}
+          onChange={handleInputChange}
+          placeholder="Create a password (min. 6 characters)"
+          required
+          className="rounded-md border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-300"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          We'll create your account automatically so you're logged in for your report.
+        </p>
+      </div>
+
       <Button
         onClick={handleNumerologyFormSubmit}
         disabled={isSubmitting}
@@ -1635,7 +1683,7 @@ const isPsychicAvailable = (psychicId) => {
         <Button
           variant="brand"
           className="rounded-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600"
-          onClick={() => navigate("/register")}
+          onClick={() => navigate("/numerology")}
         >
           Chat met een coach
         </Button>
