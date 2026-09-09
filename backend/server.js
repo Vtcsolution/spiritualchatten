@@ -18,32 +18,44 @@ const app = express();
 const server = http.createServer(app);
 
 // Socket.IO Configuration
-const io = new Server(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://spiritueelchatten.nl',
+  'https://www.spiritueelchatten.nl'
+];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
   },
-  transports: ['websocket', 'polling'] // Add this for better compatibility
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+// Socket.IO
+const io = new Server(server, {
+  cors: corsOptions,
+  transports: ['websocket', 'polling']
 });
+
 timerSocket(io);
 
 // Serve static images
 app.use('/images', express.static(path.join(__dirname, 'public/images')));
 
-
-
 // Middleware
 app.use(cookieParser());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors(corsOptions));
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // Add this for form data
+app.use(express.urlencoded({ extended: true }));
 
 // Visitor tracking middleware
 app.use(async (req, res, next) => {
