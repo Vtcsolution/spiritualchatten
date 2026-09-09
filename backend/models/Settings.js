@@ -7,6 +7,9 @@ const settingsSchema = new mongoose.Schema(
   {
     key: { type: String, unique: true, default: "site" },
     aiCoachEnabled: { type: Boolean, default: true },
+    // Which AiPsychic represents "the" AI Coach shown after the free
+    // numerology report. Auto-provisioned on first use if left unset.
+    aiCoachPsychicId: { type: mongoose.Schema.Types.ObjectId, ref: "AiPsychic", default: null },
   },
   { timestamps: true }
 );

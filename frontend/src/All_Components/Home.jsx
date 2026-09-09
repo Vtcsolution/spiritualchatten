@@ -63,6 +63,10 @@ const subscribedPsychicsRef = useRef(new Set());
     partnerPlaceOfBirth: "",
   });
   const [aiCoachEnabled, setAiCoachEnabled] = useState(true);
+  const [aiCoachPsychic, setAiCoachPsychic] = useState(null);
+  const [showAiCoachModal, setShowAiCoachModal] = useState(false);
+  const [aiCoachFormData, setAiCoachFormData] = useState({ birthTime: "", birthPlace: "" });
+  const [isStartingAiChat, setIsStartingAiChat] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [isLoadingPsychics, setIsLoadingPsychics] = useState(false);
   const [psychicsError, setPsychicsError] = useState(null);
@@ -89,13 +93,15 @@ const subscribedPsychicsRef = useRef(new Set());
   };
 
   // Site-wide toggle, controlled from the admin panel, for whether the AI
-  // Coach feature (e.g. the "AI-Powered" badge) is shown to visitors.
+  // Coach feature (e.g. the "AI-Powered" badge and the AI Coach chat CTA)
+  // is shown to visitors, plus which AiPsychic represents the AI Coach.
   useEffect(() => {
     const fetchSiteSettings = async () => {
       try {
-        const { data } = await axios.get(`${import.meta.env.VITE_BASE_URL}/api/settings`);
+        const { data } = await axios.get(`${import.meta.env.VITE_BASE_URL}/api/settings/ai-coach`);
         if (data.success) {
           setAiCoachEnabled(data.data.aiCoachEnabled);
+          setAiCoachPsychic(data.data.psychic);
         }
       } catch (err) {
         console.error("Failed to fetch site settings:", err);
@@ -104,6 +110,38 @@ const subscribedPsychicsRef = useRef(new Set());
     };
     fetchSiteSettings();
   }, []);
+
+  const handleStartAiCoachChat = async (e) => {
+    e.preventDefault();
+    if (!aiCoachFormData.birthTime || !aiCoachFormData.birthPlace.trim()) {
+      toast.error("Vul uw geboortetijd en geboorteplaats in.");
+      return;
+    }
+    setIsStartingAiChat(true);
+    try {
+      const { data } = await axios.post(`${import.meta.env.VITE_BASE_URL}/api/form/submit`, {
+        psychicId: aiCoachPsychic._id,
+        formData: {
+          yourName: formData.name,
+          birthDate: formData.dob,
+          birthTime: aiCoachFormData.birthTime,
+          birthPlace: aiCoachFormData.birthPlace.trim(),
+        },
+      });
+      if (data.success) {
+        setShowAiCoachModal(false);
+        setShowReportModal(false);
+        navigate(`/chat/${aiCoachPsychic._id}`);
+      } else {
+        toast.error(data.message || "Kon de chat niet starten.");
+      }
+    } catch (err) {
+      console.error("Start AI coach chat error:", err);
+      toast.error(err.response?.data?.message || "Kon de chat niet starten.");
+    } finally {
+      setIsStartingAiChat(false);
+    }
+  };
 
   // Debounced email validation
   const validateEmail = useCallback(
@@ -1717,7 +1755,7 @@ const isPsychicAvailable = (psychicId) => {
           <p>{numerologyReport.numbers.personality.description}</p>
         </div>
       </div>
-      <div className="text-center pt-2">
+      <div className="text-center pt-2 flex flex-wrap gap-3 justify-center">
         <Button
           variant="brand"
           className="rounded-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600"
@@ -1725,6 +1763,15 @@ const isPsychicAvailable = (psychicId) => {
         >
           Chat met een coach
         </Button>
+        {aiCoachEnabled && aiCoachPsychic && (
+          <Button
+            variant="outline"
+            className="rounded-full gap-2 border-2 border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+            onClick={() => setShowAiCoachModal(true)}
+          >
+            Chat met AI Coach
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -1809,7 +1856,43 @@ const isPsychicAvailable = (psychicId) => {
         {monthlyForecastReport && renderMonthlyForecastReport()}
       </DialogContent>
     </Dialog>
-    
+
+    {/* AI Coach: collect birth time + place, then start chatting immediately */}
+    <Dialog open={showAiCoachModal} onOpenChange={setShowAiCoachModal}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Chat met AI Coach</DialogTitle>
+          <DialogDescription>
+            Vul uw geboortetijd en geboorteplaats in om direct te starten met chatten.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleStartAiCoachChat} className="space-y-4">
+          <div className="space-y-2">
+            <Label>Geboortetijd *</Label>
+            <Input
+              type="time"
+              required
+              value={aiCoachFormData.birthTime}
+              onChange={(e) => setAiCoachFormData((prev) => ({ ...prev, birthTime: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Geboorteplaats *</Label>
+            <Input
+              type="text"
+              placeholder="Bijv. Amsterdam, Nederland"
+              required
+              value={aiCoachFormData.birthPlace}
+              onChange={(e) => setAiCoachFormData((prev) => ({ ...prev, birthPlace: e.target.value }))}
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={isStartingAiChat}>
+            {isStartingAiChat ? "Chat starten..." : "Start chat met AI Coach"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+
     {/* CENTERED BADGES SECTION */}
     <div className="mt-6 flex justify-center items-center gap-4 max-w-[90vw] mx-auto">
       <Badge className="bg-gradient-to-r from-violet-500 to-purple-600 text-white flex items-center gap-1 shadow-md text-sm py-1 px-2">

@@ -76,9 +76,10 @@ const SiteSettings = () => {
                 AI Coach zichtbaarheid
               </CardTitle>
               <CardDescription>
-                Bepaal of de AI Coach (het AI-gedreven advies, zoals de "AI-Powered" badge op de
-                homepage) zichtbaar is voor bezoekers van de website. De onderliggende AI Coach
-                data blijft bestaan — dit schakelt alleen de weergave op de site aan of uit.
+                Bepaal of de AI Coach zichtbaar is voor bezoekers: de "AI-Powered" badge op de
+                homepage, en de "Chat met AI Coach"-knop die na het gratis numerologierapport
+                verschijnt. De onderliggende AI Coach data blijft bestaan — dit schakelt alleen
+                de weergave op de site aan of uit.
               </CardDescription>
             </CardHeader>
             <CardContent>

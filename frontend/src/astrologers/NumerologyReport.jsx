@@ -3,8 +3,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sparkles, Heart, User, Rocket } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Sparkles, Heart, User, Rocket, Bot } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 import { Loader2 } from "lucide-react";
@@ -16,6 +18,57 @@ const NumerologyReport = () => {
   const [userData, setUserData] = useState(location.state?.userData || null);
   const [showModal, setShowModal] = useState(!!location.state?.numerologyReport);
   const [isLoading, setIsLoading] = useState(!location.state?.numerologyReport);
+
+  // AI Coach: shown after the report, controlled from the admin panel
+  const [aiCoach, setAiCoach] = useState({ enabled: false, psychic: null });
+  const [showAiCoachModal, setShowAiCoachModal] = useState(false);
+  const [aiCoachFormData, setAiCoachFormData] = useState({ birthTime: "", birthPlace: "" });
+  const [isStartingAiChat, setIsStartingAiChat] = useState(false);
+
+  useEffect(() => {
+    const fetchAiCoach = async () => {
+      try {
+        const { data } = await axios.get(`${import.meta.env.VITE_BASE_URL}/api/settings/ai-coach`);
+        if (data.success) {
+          setAiCoach({ enabled: data.data.aiCoachEnabled, psychic: data.data.psychic });
+        }
+      } catch (err) {
+        console.error("Failed to fetch AI coach:", err);
+      }
+    };
+    fetchAiCoach();
+  }, []);
+
+  const handleStartAiCoachChat = async (e) => {
+    e.preventDefault();
+    if (!aiCoachFormData.birthTime || !aiCoachFormData.birthPlace.trim()) {
+      toast.error("Vul uw geboortetijd en geboorteplaats in.");
+      return;
+    }
+    setIsStartingAiChat(true);
+    try {
+      const { data } = await axios.post(`${import.meta.env.VITE_BASE_URL}/api/form/submit`, {
+        psychicId: aiCoach.psychic._id,
+        formData: {
+          yourName: userData?.name || "",
+          birthDate: userData?.dob || "",
+          birthTime: aiCoachFormData.birthTime,
+          birthPlace: aiCoachFormData.birthPlace.trim(),
+        },
+      });
+      if (data.success) {
+        setShowAiCoachModal(false);
+        navigate(`/chat/${aiCoach.psychic._id}`);
+      } else {
+        toast.error(data.message || "Kon de chat niet starten.");
+      }
+    } catch (err) {
+      console.error("Start AI coach chat error:", err);
+      toast.error(err.response?.data?.message || "Kon de chat niet starten. Log opnieuw in en probeer het nogmaals.");
+    } finally {
+      setIsStartingAiChat(false);
+    }
+  };
 
   // Fetch report and user data if not provided in state
   useEffect(() => {
@@ -227,6 +280,16 @@ const NumerologyReport = () => {
 >
   1 minuut gratis chat met een coach
 </Button>
+{aiCoach.enabled && aiCoach.psychic && (
+  <Button
+    variant="outline"
+    className="rounded-full gap-2 text-base sm:text-lg py-3 px-6 border-2 border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+    onClick={() => setShowAiCoachModal(true)}
+  >
+    <Bot className="h-5 w-5" />
+    Chat met AI Coach
+  </Button>
+)}
 
 <style>
 {`
@@ -243,6 +306,51 @@ const NumerologyReport = () => {
 </style>
               </div>
             </div>
+
+            {/* AI Coach: collect birth time + place, then start chatting immediately */}
+            <Dialog open={showAiCoachModal} onOpenChange={setShowAiCoachModal}>
+              <DialogContent className="max-w-md p-6 bg-white dark:bg-slate-950 rounded-lg shadow-xl">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-indigo-900">
+                    <Bot className="h-5 w-5" /> Chat met AI Coach
+                  </DialogTitle>
+                  <DialogDescription>
+                    Vul uw geboortetijd en geboorteplaats in om direct te starten met chatten.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleStartAiCoachChat} className="space-y-4 mt-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="ai-coach-birthtime">Geboortetijd *</Label>
+                    <Input
+                      id="ai-coach-birthtime"
+                      type="time"
+                      required
+                      value={aiCoachFormData.birthTime}
+                      onChange={(e) => setAiCoachFormData((prev) => ({ ...prev, birthTime: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ai-coach-birthplace">Geboorteplaats *</Label>
+                    <Input
+                      id="ai-coach-birthplace"
+                      type="text"
+                      placeholder="Bijv. Amsterdam, Nederland"
+                      required
+                      value={aiCoachFormData.birthPlace}
+                      onChange={(e) => setAiCoachFormData((prev) => ({ ...prev, birthPlace: e.target.value }))}
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    variant="brand"
+                    className="w-full rounded-full"
+                    disabled={isStartingAiChat}
+                  >
+                    {isStartingAiChat ? "Chat starten..." : "Start chat met AI Coach"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
 
             {/* Modal for Initial Report Display */}
             <Dialog open={showModal} onOpenChange={setShowModal}>
