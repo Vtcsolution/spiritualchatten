@@ -36,7 +36,7 @@ exports.createWalletTopup = async (req, res) => {
     );
 
     const redirectUrl = getValidUrl(
-      process.env.FRONTEND_URL || 'https://spiritueelchatten.nl',
+      process.env.FRONTEND_URL || 'http://localhost:5173',
       '/payment/result'
     );
 

@@ -157,4 +157,4 @@ const checkAndUpdateTimer = async (req, res, next) => {
   }
 };
 
-module.exports = { checkAndUpdateTimer };
+module.exports = { checkAndUpdateTimer }

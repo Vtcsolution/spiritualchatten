@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -16,12 +15,12 @@ import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
 
-// Hulpfunctie om mobiele apparaten te detecteren
+// Helper function to detect mobile devices
 const isMobileDevice = () => {
   return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
 
-// Hulpfunctie voor debounce async operaties
+// Helper function for debounce async operations
 const debounce = (func, wait) => {
   let timeout;
   return (...args) => {
@@ -59,17 +58,16 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
   const timerIntervalRef = useRef(null);
   const sessionLockRef = useRef(false);
 
-  // Formatteer timerduur in MM:SS en credits als geheel getal
+  // Format timer duration in MM:SS and credits as integer
   const formatTimerDuration = (seconds) => {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${minutes}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
-  // Formatteer credits naar geheel getal
+  // Format credits to integer
   const formatCredits = (creditsValue) => {
     if (creditsValue === null || creditsValue === undefined) return "0";
-    // Rond af naar dichtstbijzijnde geheel getal
     return Math.round(creditsValue).toString();
   };
 
@@ -119,7 +117,7 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
       setFreeSessionStarted(false);
       setFreeSessionUsed(false);
       sessionLockRef.current = false;
-      console.log("Gebruiker uitgelogd, states gereset");
+      console.log("User logged out, states reset");
     } else if (chat?._id && !authLoading && !authError) {
       fetchSessionStatus();
     }
@@ -146,7 +144,6 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
         const { isFree, remainingFreeTime, paidTimer, credits: serverCredits, status, freeSessionUsed } = response.data;
         console.log("fetchSessionStatus:", { isFree, remainingFreeTime, paidTimer, credits: serverCredits, status, freeSessionUsed });
         
-        // Formatteer credits naar geheel getal
         const formattedCredits = Math.round(serverCredits || 0);
         
         setIsFreePeriod(isFree);
@@ -163,7 +160,7 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
         setError(null);
         return;
       } catch (error) {
-        console.error(`fetchSessionStatus poging ${attempt} mislukt:`, error);
+        console.error(`fetchSessionStatus attempt ${attempt} failed:`, error);
         if (attempt === retries) {
           setCredits(0);
         } else {
@@ -181,12 +178,12 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
 
     socketRef.current.on("connect", () => {
       socketRef.current.emit("join", user._id);
-      console.log("WebSocket verbonden, gebruiker toegevoegd:", user._id);
+      console.log("WebSocket connected, user added:", user._id);
     });
 
     socketRef.current.on("sessionUpdate", (data) => {
       if (sessionLockRef.current) return;
-      console.log("Ontvangen sessionUpdate:", data);
+      console.log("Received sessionUpdate:", data);
       if (data.psychicId === chat._id) {
         setIsFreePeriod(data.isFree);
         setTimerActive(data.isFree || (data.status === "paid" && data.paidTimer > 0));
@@ -213,14 +210,14 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
 
     socketRef.current.on("creditsUpdate", (data) => {
       if (data.userId === user._id) {
-        console.log("Ontvangen creditsUpdate:", data);
+        console.log("Received creditsUpdate:", data);
         setCredits(Math.round(data.credits || 0));
       }
     });
 
     socketRef.current.on("connect_error", (err) => {
       console.error("WebSocket connect_error:", err);
-      setError("Kon geen verbinding maken met real-time updates. Terugvallen op polling.");
+      setError("Could not connect to real-time updates. Falling back to polling.");
       const pollingInterval = setInterval(() => fetchSessionStatus(), 2000);
       socketRef.current.pollingInterval = pollingInterval;
     });
@@ -231,7 +228,7 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
       if (socketRef.current) {
         clearInterval(socketRef.current.pollingInterval);
         socketRef.current.disconnect();
-        console.log("WebSocket verbinding verbroken");
+        console.log("WebSocket disconnected");
       }
     };
   }, [user, chat?._id]);
@@ -272,7 +269,7 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
         setTimerDuration(0);
         await fetchSessionStatus();
       } else {
-        setError(`Kon gratis sessie niet starten: ${error.response?.data?.error || error.message}`);
+        setError(`Could not start free session: ${error.response?.data?.error || error.message}`);
       }
     } finally {
       sessionLockRef.current = false;
@@ -302,15 +299,15 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
       setFreeSessionUsed(true);
       setActivePaidSession({ psychicId: chat._id, paidTimer: Math.round(response.data.paidTimer) });
       setError(null);
-      toast.success("Betaalde sessie succesvol gestart!");
+      toast.success("Paid session started successfully!");
       await fetchSessionStatus();
     } catch (error) {
       const errMsg = error.response?.data?.error || error.message;
       console.error("startPaidSession error:", error);
-      setError(`Kon betaalde sessie niet starten: ${errMsg}`);
-      toast.error(errMsg || "Kon betaalde sessie niet starten. Probeer het opnieuw.");
+      setError(`Could not start paid session: ${errMsg}`);
+      toast.error(errMsg || "Could not start paid session. Please try again.");
       if (errMsg.includes("locked")) {
-        toast.info("Bronnen zijn tijdelijk vergrendeld. Probeer over een moment opnieuw...");
+        toast.info("Resources are temporarily locked. Please try again in a moment...");
         setTimeout(() => fetchSessionStatus(), 2000);
       }
     } finally {
@@ -344,15 +341,15 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
       setFreeSessionUsed(true);
       setModalState("showFeedbackModal", true);
       setError(null);
-      toast.success("Betaalde sessie succesvol gestopt!");
+      toast.success("Paid session stopped successfully!");
       await fetchSessionStatus();
     } catch (error) {
       const errMsg = error.response?.data?.error || error.message;
       console.error("stopPaidSession error:", error);
-      setError(`Kon sessie niet stoppen: ${errMsg}`);
-      toast.error(errMsg || "Kon sessie niet stoppen. Probeer het opnieuw.");
+      setError(`Could not stop session: ${errMsg}`);
+      toast.error(errMsg || "Could not stop session. Please try again.");
       if (errMsg.includes("locked")) {
-        toast.info("Sessie of portemonnee is vergrendeld. Probeer over een moment opnieuw...");
+        toast.info("Session or wallet is locked. Please try again in a moment...");
         setTimeout(() => fetchSessionStatus(), 2000);
       }
     } finally {
@@ -377,12 +374,12 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
         setTimerActive(false);
         setTimerDuration(0);
         setIsFreePeriod(false);
-        setError("Beëindig je huidige betaalde sessie om met deze psychic te chatten.");
+        setError("End your current paid session to chat with this psychic.");
       } else {
         fetchSessionStatus();
       }
     } else {
-      setError(authError || "Psychic ID of gebruikersauthenticatie ontbreekt");
+      setError(authError || "Psychic ID or user authentication missing");
     }
   }, [chat?._id, user, authLoading, authError, activePaidSession]);
 
@@ -414,26 +411,26 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
   // Send message
   const handleSendMessage = async () => {
     if (!messageInput.trim() || isSending || authLoading || !chat?._id || authError) {
-      toast.error("Kan bericht niet verzenden. Controleer je sessie of authenticatie.");
+      toast.error("Cannot send message. Check your session or authentication.");
       return;
     }
 
     if (activePaidSession && activePaidSession.psychicId !== chat._id) {
-      toast.error("Beëindig je huidige betaalde sessie om met deze psychic te chatten.");
+      toast.error("End your current paid session to chat with this psychic.");
       return;
     }
 
     if (!timerActive) {
       if (freeSessionUsed && (credits == null || credits <= 0)) {
-        toast.error("Geen credits meer. Voeg credits toe om door te gaan.");
+        toast.error("No credits left. Add credits to continue.");
         setIsPaymentModalOpen(true);
         return;
       }
       if (freeSessionUsed && credits > 0) {
-        toast.error("Start een betaalde sessie om door te gaan met chatten.");
+        toast.error("Start a paid session to continue chatting.");
         return;
       }
-      toast.error("Sessie niet actief. Start een sessie.");
+      toast.error("Session not active. Start a session.");
       return;
     }
 
@@ -444,8 +441,8 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
       setMessageInput("");
       setError(null);
     } catch (error) {
-      setError(`Kon bericht niet verzenden: ${error.response?.data?.error || error.message}`);
-      toast.error(error.response?.data?.error || "Kon bericht niet verzenden.");
+      setError(`Could not send message: ${error.response?.data?.error || error.message}`);
+      toast.error(error.response?.data?.error || "Could not send message.");
     } finally {
       setIsSending(false);
     }
@@ -468,23 +465,23 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
 
   // Determine input placeholder
   const getInputPlaceholder = () => {
-    if (!chat?._id || authLoading || authError) return "Laden...";
+    if (!chat?._id || authLoading || authError) return "Loading...";
     if (activePaidSession && activePaidSession.psychicId !== chat._id) {
-      return "Beëindig je huidige betaalde sessie om te chatten";
+      return "End your current paid session to chat";
     }
     if (timerActive) {
-      return isFreePeriod ? "Typ een bericht (gratis sessie)..." : "Typ een bericht (betaalde sessie)...";
+      return isFreePeriod ? "Type a message (free session)..." : "Type a message (paid session)...";
     }
     if (freeSessionUsed) {
-      return credits > 0 ? "Start een betaalde sessie om te chatten" : "Koop credits om door te gaan met chatten.";
+      return credits > 0 ? "Start a paid session to chat" : "Buy credits to continue chatting.";
     }
-    return "Typ een bericht...";
+    return "Type a message...";
   };
 
   // Handle payment
   const handlePayment = async () => {
     if (!selectedPaymentMethod || !selectedPlan) {
-      toast.error("Selecteer een betaalmethode en een plan.");
+      toast.error("Select a payment method and a plan.");
       return;
     }
 
@@ -510,8 +507,8 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
       localStorage.setItem("lastPaymentId", response.data.paymentId);
       window.location.href = response.data.paymentUrl;
     } catch (error) {
-      console.error("Betalingsfout:", error);
-      toast.error("Betaling mislukt. Probeer het opnieuw.");
+      console.error("Payment error:", error);
+      toast.error("Payment failed. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -534,14 +531,14 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
             </Avatar>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <h2 className="font-medium">{chat?.name}</h2>
+                <h2 className="font-medium text-lg">{chat?.name}</h2>
                 <span className="text-xs text-muted-foreground">{chat?.type} Specialist</span>
               </div>
             </div>
           </>
         ) : (
           <div className="flex-1">
-            <span className="text-sm text-muted-foreground">Psychic data laden...</span>
+            <span className="text-sm text-muted-foreground">Loading psychic data...</span>
           </div>
         )}
         {(error || authError) && (
@@ -564,7 +561,7 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
             <div className="flex justify-start">
               <div className="max-w-[75%] rounded-lg bg-muted px-4 py-2">
                 <div className="flex space-x-1">
-                  <p className="text-muted-foreground">Typen</p>
+                  <p className="text-muted-foreground">Typing</p>
                   <div className="flex items-center space-x-1">
                     <div className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0ms" }} />
                     <div className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "150ms" }} />
@@ -589,13 +586,13 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
                 <span className="text-sm font-medium">
                   {timerActive
                     ? isFreePeriod
-                      ? `Gratis Sessie: ${formatTimerDuration(timerDuration)}`
-                      : `Betaalde Sessie: ${formatTimerDuration(timerDuration)}`
+                      ? `Free Session: ${formatTimerDuration(timerDuration)}`
+                      : `Paid Session: ${formatTimerDuration(timerDuration)}`
                     : activePaidSession && activePaidSession.psychicId !== chat._id
-                    ? `Betaalde sessie actief met andere psychic`
+                    ? `Paid session active with another psychic`
                     : freeSessionUsed
-                    ? "Gratis minuut gebruikt"
-                    : "Wachten om gratis minuut te starten"}
+                    ? "Free minute used"
+                    : "Waiting to start free minute"}
                 </span>
               </div>
             ) : (
@@ -607,26 +604,26 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
                       <span className="text-sm font-medium">
                         {timerActive
                           ? isFreePeriod
-                            ? `Gratis Sessie: ${formatTimerDuration(timerDuration)}`
-                            : `Betaalde Sessie: ${formatTimerDuration(timerDuration)}`
+                            ? `Free Session: ${formatTimerDuration(timerDuration)}`
+                            : `Paid Session: ${formatTimerDuration(timerDuration)}`
                           : activePaidSession && activePaidSession.psychicId !== chat._id
-                          ? `Betaalde sessie actief met andere psychic`
+                          ? `Paid session active with another psychic`
                           : freeSessionUsed
-                          ? "Gratis minuut gebruikt"
-                          : "Wachten om gratis minuut te starten"}
+                          ? "Free minute used"
+                          : "Waiting to start free minute"}
                       </span>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
                     {isFreePeriod
-                      ? "Gratis minuut timer (1 minuut, kan niet gestopt worden)"
+                      ? "Free minute timer (1 minute, cannot be stopped)"
                       : timerActive
-                      ? `Betaalde sessie: ${formatCredits(credits)} credits over`
+                      ? `Paid session: ${formatCredits(credits)} credits left`
                       : activePaidSession && activePaidSession.psychicId !== chat._id
-                      ? `Beëindig je betaalde sessie met een andere psychic om te chatten`
+                      ? `End your paid session with another psychic to chat`
                       : freeSessionUsed
-                      ? "Gratis minuut gebruikt, start een betaalde sessie"
-                      : "Gratis minuut start automatisch"}
+                      ? "Free minute used, start a paid session"
+                      : "Free minute starts automatically"}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -644,7 +641,7 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
                   Credits: {formatCredits(credits)}
                 </Button>
               ) : (
-                <span className="text-sm text-gray-500">Credits laden...</span>
+                <span className="text-sm text-gray-500">Loading credits...</span>
               )}
               {!isFreePeriod && !timerActive && !activePaidSession && credits !== null && credits > 0 && (
                 isMobileDevice() ? (
@@ -659,10 +656,10 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
                     {isStartingSession ? (
                       <div className="flex items-center gap-1">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Starten...
+                        Starting...
                       </div>
                     ) : (
-                      "Start Betaalde Sessie"
+                      "Start Paid Session"
                     )}
                   </Button>
                 ) : (
@@ -679,15 +676,15 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
                           {isStartingSession ? (
                             <div className="flex items-center gap-1">
                               <Loader2 className="h-4 w-4 animate-spin" />
-                              Starten...
+                              Starting...
                             </div>
                           ) : (
-                            "Start Betaalde Sessie"
+                            "Start Paid Session"
                           )}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        Start betaalde sessie (1 credit/minuut)
+                        Start paid session (1 credit/minute)
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -706,12 +703,12 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
                     {isStoppingSession ? (
                       <div className="flex items-center gap-1">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Stoppen...
+                        Stopping...
                       </div>
                     ) : (
                       <>
                         <StopCircle className="h-4 w-4" />
-                        Stop Betaalde Sessie
+                        Stop Paid Session
                       </>
                     )}
                   </Button>
@@ -729,18 +726,18 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
                           {isStoppingSession ? (
                             <div className="flex items-center gap-1">
                               <Loader2 className="h-4 w-4 animate-spin" />
-                              Stoppen...
+                              Stopping...
                             </div>
                           ) : (
                             <>
                               <StopCircle className="h-4 w-4" />
-                              Stop Betaalde Sessie
+                              Stop Paid Session
                             </>
                           )}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        Stop betaalde sessie
+                        Stop paid session
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -755,9 +752,9 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
                     onTouchStart={(e) => handleTouchStart(e, () => setIsPaymentModalOpen(true))}
                     disabled={isStartingSession || isStoppingSession || sessionLockRef.current}
                     className="gap-1 bg-[#3B5EB7] text-white hover:bg-[#2A4A9A] hover:text-white transition-colors active:opacity-70"
-                    aria-label="Voeg credits toe om door te gaan met chatten"
+                    aria-label="Add credits to continue chatting"
                   >
-                    Credits Toevoegen
+                    Add Credits
                   </Button>
                 ) : (
                   <TooltipProvider>
@@ -769,27 +766,27 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
                           onClick={() => setIsPaymentModalOpen(true)}
                           disabled={isStartingSession || isStoppingSession || sessionLockRef.current}
                           className="gap-1 bg-[#3B5EB7] text-white hover:bg-[#2A4A9A] hover:text-white transition-colors"
-                          aria-label="Voeg credits toe om door te gaan met chatten"
+                          aria-label="Add credits to continue chatting"
                         >
-                          Credits Toevoegen
+                          Add Credits
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        Koop credits om door te gaan
+                        Buy credits to continue
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 )
               )}
               {activePaidSession && activePaidSession.psychicId !== chat._id && (
-                <span className="text-xs text-red-500">Actieve sessie met andere psychic</span>
+                <span className="text-xs text-red-500">Active session with another psychic</span>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Message Input */}
+      {/* Message Input - ENLARGED */}
       <div className="border-t border-border p-4">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
@@ -798,20 +795,20 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
               onChange={(e) => setMessageInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={getInputPlaceholder()}
-              className="pr-12"
+              className="pr-12 text-base py-3 h-auto"
               disabled={isSending || !chat?._id || authLoading || authError || (activePaidSession && activePaidSession.psychicId !== chat._id) || (!timerActive && freeSessionUsed && (credits == null || credits <= 0))}
             />
             <Button
               variant="ghost"
               size="icon"
-              className="absolute right-0 top-0"
+              className="absolute right-0 top-0 h-full aspect-square"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               onTouchStart={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 setShowEmojiPicker(!showEmojiPicker);
               }}
-              aria-label="Emoji picker wisselen"
+              aria-label="Toggle emoji picker"
               disabled={isSending || !chat?._id || authLoading || authError || (activePaidSession && activePaidSession.psychicId !== chat._id) || (!timerActive && freeSessionUsed && (credits == null || credits <= 0))}
             >
               <Smile className="h-5 w-5" />
@@ -846,8 +843,8 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
             onTouchStart={(e) => handleTouchStart(e, handleSendMessage)}
             disabled={!messageInput.trim() || isSending || !chat?._id || authLoading || authError || (activePaidSession && activePaidSession.psychicId !== chat._id) || (!timerActive && freeSessionUsed && (credits == null || credits <= 0))}
             size="icon"
-            aria-label="Bericht verzenden"
-            className="active:opacity-70"
+            aria-label="Send message"
+            className="active:opacity-70 h-auto py-3 px-4"
           >
             <Send className="h-5 w-5" />
           </Button>
@@ -859,19 +856,19 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
         onClose={() => setModalState("showFeedbackModal", false)}
         psychicId={chat?._id}
         onSubmit={() => {
-          console.log("Feedback ingediend in ChatDetail");
+          console.log("Feedback submitted in ChatDetail");
         }}
       />
 
       <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
         <DialogContent className="max-w-[90vw] sm:max-w-[400px] max-h-[80vh] overflow-y-auto p-4">
           <DialogHeader>
-            <DialogTitle className="text-lg">Chat Credits Kopen</DialogTitle>
+            <DialogTitle className="text-lg">Buy Chat Credits</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <h3 className="text-base font-medium text-center">
-                Kies een credit pakket
+                Choose a credit package
               </h3>
               <div className="grid gap-3">
                 {[
@@ -882,14 +879,14 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
                     pricePerMinute: 0.70,
                   },
                   {
-                    name: "Populair Plan",
+                    name: "Popular Plan",
                     credits: 20,
                     price: 11.99,
                     pricePerMinute: 0.60,
                     isPopular: true,
                   },
                   {
-                    name: "Diepgaand Plan",
+                    name: "Deep Plan",
                     credits: 30,
                     price: 16.99,
                     pricePerMinute: 0.57,
@@ -909,14 +906,14 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
                   >
                     {plan.isPopular && (
                       <div className="absolute top-0 right-0 bg-yellow-400 text-xs font-bold px-1.5 py-0.5 rounded-bl-md rounded-tr-md">
-                        POPULAIR
+                        POPULAR
                       </div>
                     )}
                     <div className="flex justify-between items-center">
                       <div>
                         <h4 className="font-medium text-base">{plan.name}</h4>
                         <p className="text-sm text-gray-500">
-                          {plan.credits} credits ({plan.credits} minuten)
+                          {plan.credits} credits ({plan.credits} minutes)
                         </p>
                       </div>
                       <div className="text-right">
@@ -937,7 +934,7 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
             </div>
             <div className="space-y-2">
               <h3 className="text-base font-medium text-center">
-                Selecteer Betaalmethode
+                Select Payment Method
               </h3>
               <div className="space-y-1">
                 {[
@@ -979,10 +976,10 @@ export default function ChatDetail({ chat, onBack, onSendMessage }) {
               {isProcessing ? (
                 <div className="flex items-center gap-2 justify-center">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Verwerken...</span>
+                  <span>Processing...</span>
                 </div>
               ) : (
-                `Betaal €${selectedPlan?.price?.toFixed(2) || "0.00"}`
+                `Pay €${selectedPlan?.price?.toFixed(2) || "0.00"}`
               )}
             </motion.button>
           </div>

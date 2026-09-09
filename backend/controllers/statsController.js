@@ -1,11 +1,11 @@
 const User = require("../models/User");
 const Payment = require("../models/Payment");
-const AiPsychic = require("../models/aiPsychic");
+const Psychic = require("../models/HumanChat/Psychic");
 
 exports.getStats = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
-    const totalPsychics = await AiPsychic.countDocuments();
+    const totalPsychics = await Psychic.countDocuments();
 
     // Total revenue
     const totalAmountAgg = await Payment.aggregate([

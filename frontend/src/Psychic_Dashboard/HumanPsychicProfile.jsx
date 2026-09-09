@@ -11,25 +11,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  User, 
-  Mail, 
-  DollarSign, 
-  Clock, 
-  Edit, 
-  Save, 
-  X, 
-  Trash2, 
+import {
+  User,
+  Mail,
+  DollarSign,
+  Clock,
+  Edit,
+  Save,
+  X,
+  Trash2,
   Shield,
   Calendar,
   Key,
   Info,
   AlertCircle,
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  Upload,
 } from 'lucide-react';
 import { toast } from "sonner";
 import axios from "axios";
+import { uploadToCloudinary } from "@/utils/cloudinary";
 
 const HumanPsychicProfile = () => {
   const { psychic, loading: authLoading, isAuthenticated, logout, refreshPsychic } = usePsychicAuth();
@@ -49,8 +51,14 @@ const HumanPsychicProfile = () => {
     ratePerMin: '',
     bio: '',
     gender: '',
+    image: '',
   });
-  
+
+  // Profile picture upload states
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -96,6 +104,7 @@ const HumanPsychicProfile = () => {
           ratePerMin: data.psychic.ratePerMin?.toString() || '',
           bio: data.psychic.bio || '',
           gender: data.psychic.gender || '',
+          image: data.psychic.image || '',
         });
       } else {
         throw new Error(data.message || 'Failed to load profile');
@@ -137,6 +146,30 @@ const HumanPsychicProfile = () => {
     }));
   };
 
+  // Handle profile picture selection
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be smaller than 5MB");
+      return;
+    }
+
+    setImageFile(file);
+    setImagePreviewUrl(URL.createObjectURL(file));
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreviewUrl(null);
+  };
+
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
     setPasswordData(prev => ({
@@ -158,23 +191,40 @@ const HumanPsychicProfile = () => {
         return;
       }
 
+      // Upload new profile picture to Cloudinary first, if one was selected
+      let finalImageUrl = formData.image;
+      if (imageFile) {
+        try {
+          setIsUploadingImage(true);
+          finalImageUrl = await uploadToCloudinary(imageFile);
+        } catch (uploadErr) {
+          toast.error("Failed to upload profile picture");
+          return;
+        } finally {
+          setIsUploadingImage(false);
+        }
+      }
+
       const updateData = {
         name: formData.name,
         email: formData.email,
         ratePerMin: parseFloat(formData.ratePerMin),
         bio: formData.bio,
         gender: formData.gender,
+        image: finalImageUrl,
       };
 
       const { data } = await api.put('/api/human-psychics/profile/me', updateData);
-      
+
       if (data.success) {
         setProfile(data.psychic);
         setIsEditing(false);
+        setImageFile(null);
+        setImagePreviewUrl(null);
         refreshPsychic(); // Refresh auth context
-        
+
         toast.success("Profile updated successfully!");
-        
+
         // Update form data with new values
         setFormData({
           name: data.psychic.name || '',
@@ -182,6 +232,7 @@ const HumanPsychicProfile = () => {
           ratePerMin: data.psychic.ratePerMin?.toString() || '',
           bio: data.psychic.bio || '',
           gender: data.psychic.gender || '',
+          image: data.psychic.image || '',
         });
       } else {
         throw new Error(data.message || 'Failed to update profile');
@@ -358,13 +409,52 @@ const HumanPsychicProfile = () => {
           <div className="lg:col-span-1 space-y-6">
             <Card>
               <CardHeader className="text-center">
-                <div className="flex justify-center mb-4">
-                  <Avatar className="h-32 w-32 border-4 border-white shadow-lg">
-                    <AvatarImage src={profile?.image} />
-                    <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-2xl">
-                      {profile?.name?.[0] || 'P'}
-                    </AvatarFallback>
-                  </Avatar>
+                <div className="flex flex-col items-center mb-4">
+                  <div className="relative">
+                    <Avatar className="h-32 w-32 border-4 border-white shadow-lg">
+                      <AvatarImage src={imagePreviewUrl || profile?.image} />
+                      <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-2xl">
+                        {profile?.name?.[0] || 'P'}
+                      </AvatarFallback>
+                    </Avatar>
+                    {isEditing && (
+                      <>
+                        {imagePreviewUrl && (
+                          <button
+                            type="button"
+                            className="absolute -top-1 -right-1 h-7 w-7 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600"
+                            onClick={removeImage}
+                            title="Remove selected picture"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        <label
+                          htmlFor="profile-picture-upload"
+                          className="absolute inset-0 rounded-full flex items-center justify-center bg-black/0 hover:bg-black/40 text-transparent hover:text-white transition-colors cursor-pointer"
+                          title="Upload profile picture"
+                        >
+                          <Upload className="h-6 w-6" />
+                        </label>
+                        <input
+                          id="profile-picture-upload"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleImageChange}
+                        />
+                      </>
+                    )}
+                  </div>
+                  {isEditing && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      {isUploadingImage
+                        ? 'Uploading...'
+                        : imageFile
+                        ? imageFile.name
+                        : 'Click the picture to change it'}
+                    </p>
+                  )}
                 </div>
                 <CardTitle className="text-xl">{profile?.name}</CardTitle>
                 <CardDescription className="flex items-center justify-center gap-2">
@@ -471,17 +561,25 @@ const HumanPsychicProfile = () => {
                         </Button>
                       ) : (
                         <div className="flex gap-2">
-                          <Button onClick={() => setIsEditing(false)} variant="outline" className="gap-2">
+                          <Button
+                            onClick={() => {
+                              setIsEditing(false);
+                              setImageFile(null);
+                              setImagePreviewUrl(null);
+                            }}
+                            variant="outline"
+                            className="gap-2"
+                          >
                             <X className="h-4 w-4" />
                             Cancel
                           </Button>
-                          <Button 
-                            onClick={handleUpdateProfile} 
+                          <Button
+                            onClick={handleUpdateProfile}
                             className="gap-2"
-                            disabled={loading}
+                            disabled={loading || isUploadingImage}
                           >
                             <Save className="h-4 w-4" />
-                            Save Changes
+                            {isUploadingImage ? "Uploading..." : "Save Changes"}
                           </Button>
                         </div>
                       )}
