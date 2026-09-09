@@ -158,6 +158,7 @@ const ChatRequestRoutes = require ('./routes/PaidTimer/chatRequestRoutes')
 const timerService = require('./services/timerService');
 const ratingRoutes = require('./routes/HumanChatbot/ratingRoutes');
 const admindataRoutes = require ('./routes/HumanChatbot/admindataRoutes')
+const settingsRoutes = require('./routes/settingsRoutes');
 // API Routes
 app.use('/api/human-psychics', psychicRoutes);
 app.use("/api/humanchat", chatRoute)
@@ -186,6 +187,7 @@ app.use('/api', translateRoute);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/admindata', admindataRoutes)
+app.use('/api/settings', settingsRoutes);
 // Basic route
 app.get('/', (req, res) => {
   res.send('Backend is running');

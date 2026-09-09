@@ -102,14 +102,21 @@ const Doctor_Side_Bar = ({ side }) => {
                   </Link>
                 </li>
               <li id="cc" className={`flex justify-between p-2 rounded-lg my-4`} onClick={()=>isopen(1)}>
-                  <Link to='/admin/dashboard/sendmail'> 
+                  <Link to='/admin/dashboard/sendmail'>
                   <div className=" flex justify-center space-x-2">
                         <MdOutlineAttachEmail/> <p className=" cursor-pointer">Send Email</p>
                     </div>
                   </Link>
                 </li>
-               
-                
+              <li id="cc" className={`flex justify-between p-2 rounded-lg my-4`} onClick={()=>isopen(1)}>
+                  <Link to='/admin/dashboard/site-settings'>
+                  <div className=" flex justify-center space-x-2">
+                        <Settings/> <p className=" cursor-pointer">Site Settings</p>
+                    </div>
+                  </Link>
+                </li>
+
+
                
                 {/* <li id="cc" className={`flex justify-between p-2 rounded-lg my-4 ${isactive===6 ? "activ" : ""}`} onClick={()=>isopen(6)}>
                   <div className=" flex justify-center space-x-2">

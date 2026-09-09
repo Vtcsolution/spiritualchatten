@@ -48,6 +48,7 @@ import AllUsers from "./Admin_Dashboard/AllUsers"
 import AllAdvisors from "./Admin_Dashboard/AllAdvisors"
 import AI_Inputs_Data from "./Admin_Dashboard/AI_Inputs_data"
 import AllNotifications from "./Admin_Dashboard/AllNotification"
+import SiteSettings from "./Admin_Dashboard/SiteSettings"
 import Update_Terms_Confitions from "./Admin_Dashboard/Update_TermConditions"
 import Update_About from "./Admin_Dashboard/Update_About"
 import UserChats from "./Admin_Dashboard/UserChats"
@@ -128,6 +129,7 @@ const App = () => {
     "/admin/dashboard/alladvisors",
     "/admin/dashboard/inputs-data",
     "/admin/dashboard/all-notifications",
+    "/admin/dashboard/site-settings",
     "/admin/dashboard/update-conditions",
     "/admin/dashboard/update-about",
     "/admin/dashboard/user-details/:userId",
@@ -401,6 +403,9 @@ const App = () => {
             } />
             <Route path="/admin/dashboard/all-notifications" element={
               <AdminProtectedRoute><AllNotifications /></AdminProtectedRoute>
+            } />
+            <Route path="/admin/dashboard/site-settings" element={
+              <AdminProtectedRoute><SiteSettings /></AdminProtectedRoute>
             } />
             <Route path="/admin/dashboard/update-conditions" element={
               <AdminProtectedRoute><Update_Terms_Confitions /></AdminProtectedRoute>

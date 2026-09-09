@@ -62,11 +62,30 @@ const subscribedPsychicsRef = useRef(new Set());
     partnerBirthTime: "",
     partnerPlaceOfBirth: "",
   });
+  const [aiCoachEnabled, setAiCoachEnabled] = useState(true);
   const [emailError, setEmailError] = useState("");
   const [isLoadingPsychics, setIsLoadingPsychics] = useState(false);
   const [psychicsError, setPsychicsError] = useState(null);
   const [isLoadingHumanPsychics, setIsLoadingHumanPsychics] = useState(false);
   const [humanPsychicsError, setHumanPsychicsError] = useState(null);
+
+  // Site-wide toggle, controlled from the admin panel, for whether the AI
+  // Coach feature (e.g. the "AI-Powered" badge) is shown to visitors.
+  useEffect(() => {
+    const fetchSiteSettings = async () => {
+      try {
+        const { data } = await axios.get(`${import.meta.env.VITE_BASE_URL}/api/settings`);
+        if (data.success) {
+          setAiCoachEnabled(data.data.aiCoachEnabled);
+        }
+      } catch (err) {
+        console.error("Failed to fetch site settings:", err);
+        // Fail open so the homepage never breaks over a settings fetch error
+      }
+    };
+    fetchSiteSettings();
+  }, []);
+
   // Debounced email validation
   const validateEmail = useCallback(
     debounce((value) => {
@@ -1745,9 +1764,9 @@ const isPsychicAvailable = (psychicId) => {
               shadow-xl hover:shadow-2xl
               transition-all duration-300
               border-2 border-white/20 whitespace-normal"
-            onClick={() => navigate("/register")}
+            onClick={() => setShowFormModal(true)}
           >
-            Klik hier om gratis met een coach te chatten
+            Klik hier voor uw gratis rapport
           </Button>
         </motion.div>
       )}
@@ -1777,9 +1796,11 @@ const isPsychicAvailable = (psychicId) => {
       <Badge className="bg-gradient-to-r from-violet-500 to-purple-600 text-white flex items-center gap-1 shadow-md text-sm py-1 px-2">
         <Lock className="h-4 w-4" /> SSL Secure
       </Badge>
-      <Badge className="bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white flex items-center gap-1 shadow-md text-sm py-1 px-2" style={{ animationDelay: '0.3s' }}>
-        <Cpu className="h-4 w-4" /> AI-Powered
-      </Badge>
+      {aiCoachEnabled && (
+        <Badge className="bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white flex items-center gap-1 shadow-md text-sm py-1 px-2" style={{ animationDelay: '0.3s' }}>
+          <Cpu className="h-4 w-4" /> AI-Powered
+        </Badge>
+      )}
     </div>
   </div>
 </div>
