@@ -223,7 +223,7 @@ const NumerologyReport = () => {
     bg-[linear-gradient(270deg,#7c3aed,#4f46e5,#ec4899)] bg-[length:600%_600%]
     animate-[gradientShift_8s_ease_infinite,pulse_3s_ease-in-out_infinite]
   "
-  onClick={() => navigate("/numerology")}
+  onClick={() => navigate("/#human-coaches")}
 >
   1 minuut gratis chat met een coach
 </Button>

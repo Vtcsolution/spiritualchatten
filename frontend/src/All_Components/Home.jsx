@@ -69,6 +69,25 @@ const subscribedPsychicsRef = useRef(new Set());
   const [isLoadingHumanPsychics, setIsLoadingHumanPsychics] = useState(false);
   const [humanPsychicsError, setHumanPsychicsError] = useState(null);
 
+  // Scroll to the human coaches list when arriving with #human-coaches in
+  // the URL (e.g. from the "Chat with a Coach" button on the report page).
+  useEffect(() => {
+    if (location.hash === "#human-coaches" && !isLoadingHumanPsychics) {
+      const el = document.getElementById("human-coaches");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [location.hash, isLoadingHumanPsychics]);
+
+  const scrollToHumanCoaches = () => {
+    setShowReportModal(false);
+    const el = document.getElementById("human-coaches");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      navigate("/#human-coaches");
+    }
+  };
+
   // Site-wide toggle, controlled from the admin panel, for whether the AI
   // Coach feature (e.g. the "AI-Powered" badge) is shown to visitors.
   useEffect(() => {
@@ -1702,7 +1721,7 @@ const isPsychicAvailable = (psychicId) => {
         <Button
           variant="brand"
           className="rounded-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600"
-          onClick={() => navigate("/numerology")}
+          onClick={scrollToHumanCoaches}
         >
           Chat met een coach
         </Button>
@@ -1804,7 +1823,7 @@ const isPsychicAvailable = (psychicId) => {
     </div>
   </div>
 </div>
-      <div className="max-w-7xl px-2 m-auto">
+      <div className="max-w-7xl px-2 m-auto" id="human-coaches">
         <div className="mt-8 grid grid-cols-1 gap-6">
           <div className="lg:col-span-2 space-y-2 w-full">
             <div className="w-full overflow-hidden">
@@ -2127,79 +2146,6 @@ const isPsychicAvailable = (psychicId) => {
           </div>
          
           <div className="mt-12 py-8">
-            <h2 className="text-3xl font-extrabold text-center mb-8">Ontgrendel diepere inzichten</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto px-4 mb-6">
-              <div className="p-6 bg-white rounded-lg shadow-md dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                <h3 className="text-xl font-semibold mb-4">PDF Astrologierapport</h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  Ontvang een uitgebreid PDF-rapport met uw volledige horoscoop en analyses.
-                </p>
-                {pdfReport ? (
-                  <Button
-                    variant="brand"
-                    className="w-full rounded-full"
-                    onClick={() => window.open(pdfReport.pdfUrl, "_blank")}
-                  >
-                    Bekijk PDF
-                  </Button>
-                ) : (
-                  <Button
-                    variant="brand"
-                    className="w-full rounded-full"
-                    onClick={() => {
-                      if (window.confirm("Dit kost 15 credits. Doorgaan?")) {
-                        handlePdfUnlock();
-                      }
-                    }}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? "Verwerken..." : "Ontgrendel (15 credits)"}
-                  </Button>
-                )}
-              </div>
-              <div className="p-6 bg-white rounded-lg shadow-md dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                <h3 className="text-xl font-semibold mb-4">Astrologische blauwdruk</h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  Ontdek uw kosmische blauwdruk met een persoonlijk astrologierapport, dat inzichten onthult vanuit uw zon-, maan- en ascendantteken.
-                </p>
-                <Button
-                  variant="brand"
-                  className="w-full rounded-full"
-                  onClick={handleAstrologyUnlock}
-                  disabled={isSubmitting}
-                >
-                  Ontgrendel astrologierapport (5 credits)
-                </Button>
-              </div>
-              <div className="p-6 bg-white rounded-lg shadow-md dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                <h3 className="text-xl font-semibold mb-4">PDF Liefdescompatibiliteitsrapport</h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  Ontvang een gedetailleerd PDF-rapport dat de compatibiliteit tussen u en uw partner analyseert op basis van astrologische profielen.
-                </p>
-                {lovePdfReport ? (
-                  <Button
-                    variant="brand"
-                    className="w-full rounded-full"
-                    onClick={() => window.open(lovePdfReport.pdfUrl, "_blank")}
-                  >
-                    Bekijk PDF
-                  </Button>
-                ) : (
-                  <Button
-                    variant="brand"
-                    className="w-full rounded-full"
-                    onClick={() => {
-                      if (window.confirm("Dit kost 15 credits. Doorgaan?")) {
-                        handleLovePdfUnlock();
-                      }
-                    }}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? "Verwerken..." : "Ontgrendel (15 credits)"}
-                  </Button>
-                )}
-              </div>
-            </div>
             <VideoSection />
           </div>
         </div>
