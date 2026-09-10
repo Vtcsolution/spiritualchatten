@@ -2229,6 +2229,79 @@ const isPsychicAvailable = (psychicId) => {
           </div>
          
           <div className="mt-12 py-8">
+            <h2 className="text-3xl font-extrabold text-center mb-8">Ontgrendel diepere inzichten</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto px-4 mb-6">
+              <div className="p-6 bg-white rounded-lg shadow-md dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <h3 className="text-xl font-semibold mb-4">PDF Astrologierapport</h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                  Ontvang een uitgebreid PDF-rapport met uw volledige horoscoop en analyses.
+                </p>
+                {pdfReport ? (
+                  <Button
+                    variant="brand"
+                    className="w-full rounded-full"
+                    onClick={() => window.open(pdfReport.pdfUrl, "_blank")}
+                  >
+                    Bekijk PDF
+                  </Button>
+                ) : (
+                  <Button
+                    variant="brand"
+                    className="w-full rounded-full"
+                    onClick={() => {
+                      if (window.confirm("Dit kost 15 credits. Doorgaan?")) {
+                        handlePdfUnlock();
+                      }
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "Verwerken..." : "Ontgrendel (15 credits)"}
+                  </Button>
+                )}
+              </div>
+              <div className="p-6 bg-white rounded-lg shadow-md dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <h3 className="text-xl font-semibold mb-4">Astrologische blauwdruk</h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                  Ontdek uw kosmische blauwdruk met een persoonlijk astrologierapport, dat inzichten onthult vanuit uw zon-, maan- en ascendantteken.
+                </p>
+                <Button
+                  variant="brand"
+                  className="w-full rounded-full"
+                  onClick={handleAstrologyUnlock}
+                  disabled={isSubmitting}
+                >
+                  Ontgrendel astrologierapport (5 credits)
+                </Button>
+              </div>
+              <div className="p-6 bg-white rounded-lg shadow-md dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <h3 className="text-xl font-semibold mb-4">PDF Liefdescompatibiliteitsrapport</h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                  Ontvang een gedetailleerd PDF-rapport dat de compatibiliteit tussen u en uw partner analyseert op basis van astrologische profielen.
+                </p>
+                {lovePdfReport ? (
+                  <Button
+                    variant="brand"
+                    className="w-full rounded-full"
+                    onClick={() => window.open(lovePdfReport.pdfUrl, "_blank")}
+                  >
+                    Bekijk PDF
+                  </Button>
+                ) : (
+                  <Button
+                    variant="brand"
+                    className="w-full rounded-full"
+                    onClick={() => {
+                      if (window.confirm("Dit kost 15 credits. Doorgaan?")) {
+                        handleLovePdfUnlock();
+                      }
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "Verwerken..." : "Ontgrendel (15 credits)"}
+                  </Button>
+                )}
+              </div>
+            </div>
             <VideoSection />
           </div>
         </div>

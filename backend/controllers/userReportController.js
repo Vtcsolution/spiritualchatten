@@ -1,4 +1,5 @@
 // controllers/userReportController.js
+const mongoose = require("mongoose");
 const UserReportModal = require("../models/UserReportModal");
 const Message = require("../models/Message");
 const transporter = require("../config/mailer");
@@ -54,6 +55,9 @@ exports.getAllUsers = async (req, res) => {
 exports.getUserById = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
     const user = await UserReportModal.findById(id).lean();
 
     if (!user) {

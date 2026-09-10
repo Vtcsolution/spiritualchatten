@@ -177,13 +177,17 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/thumbnails', videothumnail);
 
 app.use('/api', timerRoutes);
-app.use('/api', userReportRoutes);
 app.use('/api', feedback);
 app.use('/api', numerologyRouter);
 app.use('/api', astrologyRoutes);
 app.use('/api', montlyforcast);
 app.use('/api', lovecompatability);
 app.use('/api', translateRoute);
+// NOTE: userReportRoutes has a greedy `GET /:id` — it MUST be mounted last
+// among the bare `/api` routers, otherwise it swallows every single-segment
+// GET (e.g. /api/astrology-report, /api/numerology-report, /api/reports)
+// and 500s with a Mongo CastError before the real handler is reached.
+app.use('/api', userReportRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/admindata', admindataRoutes)
