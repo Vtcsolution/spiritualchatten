@@ -322,6 +322,107 @@ const parseTime = (timeStr = "") => {
   };
 };
 
+// ✅ AI Coach birth chart data, sourced directly from AstrologyAPI (the
+// vendor account the client wants the AI Coach connected to), instead of
+// the third-party RoxyAPI. Returns the same shape getWesternChartData
+// (RoxyAPI-based, below) does, so the reply-building code that reads
+// western.planets / western.explicitHouses / western.sunSign etc. doesn't
+// need to change regardless of which source served the data.
+const astrologyApiAuth = {
+  username: process.env.ASTROLOGY_API_USER_ID,
+  password: process.env.ASTROLOGY_API_KEY,
+};
+
+const getWesternChartDataFromAstrologyAPI = async (formData, coords) => {
+  const { hour, min } = parseTime(formData.birthTime);
+  const birthDateStr = formData.birthDate instanceof Date
+    ? formData.birthDate.toISOString().split('T')[0]
+    : new Date(formData.birthDate).toISOString().split('T')[0];
+  const [year, month, day] = birthDateStr.split('-').map(Number);
+
+  // AstrologyAPI wants a numeric UTC offset, not an IANA timezone name
+  let tzone = 0;
+  try {
+    const tzRes = await axios.post(
+      "https://json.astrologyapi.com/v1/timezone_with_dst",
+      { latitude: coords.latitude, longitude: coords.longitude, date: birthDateStr },
+      { auth: astrologyApiAuth }
+    );
+    tzone = tzRes.data?.timezone ?? 0;
+  } catch (tzError) {
+    console.warn(`[AstrologyAPI Chart] Timezone lookup failed, defaulting to 0: ${tzError.message}`);
+  }
+
+  const payload = {
+    day, month, year,
+    hour: Number(hour),
+    min: Number(min),
+    lat: parseFloat(coords.latitude),
+    lon: parseFloat(coords.longitude),
+    tzone: Number(tzone),
+  };
+
+  console.log(`[AstrologyAPI Chart] Fetching planets/ascendant with payload:`, payload);
+
+  const planetResponse = await axios.post(
+    "https://json.astrologyapi.com/v1/planets/tropical",
+    payload,
+    { auth: astrologyApiAuth }
+  );
+
+  let ascendantData = {};
+  try {
+    const ascendantResponse = await axios.post(
+      "https://json.astrologyapi.com/v1/general_ascendant_report/tropical",
+      payload,
+      { auth: astrologyApiAuth }
+    );
+    ascendantData = ascendantResponse.data || {};
+  } catch (ascError) {
+    console.warn(`[AstrologyAPI Chart] Ascendant lookup failed: ${ascError.message}`);
+  }
+
+  const planetData = Array.isArray(planetResponse.data) ? planetResponse.data : [];
+  const findPlanet = (name) => planetData.find((p) => p.name?.toLowerCase() === name);
+
+  const planets = planetData
+    .filter((p) => p.name)
+    .map((p) => ({
+      name: p.name,
+      sign: p.sign || "Unknown",
+      house: p.house != null ? String(p.house) : "N/A",
+      degree: p.normDegree ?? p.fullDegree ?? 0,
+      retrograde: p.is_retro === true || p.is_retro === "true",
+    }));
+
+  const sun = findPlanet("sun");
+  const moon = findPlanet("moon");
+  const venus = findPlanet("venus");
+  const mars = findPlanet("mars");
+
+  return {
+    sunSign: sun?.sign || getSignFromDate(formData.birthDate) || "Unknown",
+    moonSign: moon?.sign || "Unknown",
+    ascendant: ascendantData.sign || "Unknown",
+    ascendantDegree: 0,
+    planets,
+    houses: {},
+    ianaTz: 'UTC',
+    rawChartResponse: { planets: planetData, ascendant: ascendantData },
+    apiStatus: {
+      chartSuccess: planetData.length > 0,
+      roxyApiWorking: false,
+      source: 'AstrologyAPI',
+    },
+    explicitHouses: {
+      sun: sun?.house != null ? String(sun.house) : "N/A",
+      moon: moon?.house != null ? String(moon.house) : "N/A",
+      venus: venus?.house != null ? String(venus.house) : "N/A",
+      mars: mars?.house != null ? String(mars.house) : "N/A",
+    },
+  };
+};
+
 // ✅ UPDATED: Fix sign abbreviations in Western Chart Data
 // ✅ UPDATED: Fix house number extraction in Western Chart Data
 // ✅ UPDATED: Fix house number extraction in Western Chart Data
@@ -885,7 +986,14 @@ try {
     birthPlace,
   };
   
-  const western = await getWesternChartData(formDataForAstro, coords);
+  let western;
+  try {
+    western = await getWesternChartDataFromAstrologyAPI(formDataForAstro, coords);
+    console.log(`[Astrology] Birth chart sourced from AstrologyAPI`);
+  } catch (astrologyApiError) {
+    console.warn(`[Astrology] AstrologyAPI chart lookup failed, falling back to RoxyAPI: ${astrologyApiError.message}`);
+    western = await getWesternChartData(formDataForAstro, coords);
+  }
   roxyApiWorking = western.apiStatus.roxyApiWorking;
   
   // ✅ MANUAL OVERRIDE: Based on your correction for Amos

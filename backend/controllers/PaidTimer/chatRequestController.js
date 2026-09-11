@@ -7,6 +7,15 @@ const User = require('../../models/User');
 const Psychic = require('../../models/HumanChat/Psychic');
 const mongoose = require('mongoose');
 // Helper function for wallet locking/unlocking
+// A wallet is locked by several different code paths across the codebase
+// (this file, the credit-deduction cron job, timer routes/middleware,
+// cleanup service). If any of those throws before it resets `lock` back to
+// false, the wallet stays locked forever and every future operation here
+// (e.g. stopping a paid timer) fails with "Wallet is currently locked" even
+// though nothing is actually in progress. Treat a lock older than this as
+// stale and recover from it automatically, instead of failing indefinitely.
+const STALE_WALLET_LOCK_MS = 20000; // 20s — comfortably longer than any real lock hold time
+
 const handleWalletLock = async (userId, callback) => {
   let wallet = null;
   try {
@@ -15,11 +24,15 @@ const handleWalletLock = async (userId, callback) => {
     if (!wallet) {
       throw new Error('Wallet not found');
     }
-   
+
     if (wallet.lock) {
-      throw new Error('Wallet is currently locked');
+      const lockAgeMs = Date.now() - new Date(wallet.updatedAt || 0).getTime();
+      if (lockAgeMs < STALE_WALLET_LOCK_MS) {
+        throw new Error('Wallet is currently locked');
+      }
+      console.warn(`⚠️ Wallet ${userId} had a stale lock (${Math.round(lockAgeMs / 1000)}s old) — auto-recovering.`);
     }
-   
+
     wallet.lock = true;
     await wallet.save();
    
