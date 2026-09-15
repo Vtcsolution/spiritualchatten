@@ -2,6 +2,15 @@
 const Feedback = require("../models/Feedback");
 const mongoose = require("mongoose");
 
+// Some accounts have their email address stored as their username (e.g.
+// self-registered that way, or via the free-report signup flow). Reviews
+// are shown publicly, so never display anything that looks like an email
+// address as the reviewer's name — fall back to "Anonymous" instead.
+const safeReviewerName = (username) => {
+  if (!username || /\S+@\S+\.\S+/.test(username)) return "Anonymous";
+  return username;
+};
+
 exports.submitFeedback = async (req, res) => {
   try {
     const { psychicId } = req.params;
@@ -83,7 +92,7 @@ exports.getFeedbackByPsychicId = async (req, res) => {
       } else {
         userFeedback = feedback.map((fb) => ({
           ...fb,
-          userName: fb.userId?.username || "Anonymous",
+          userName: safeReviewerName(fb.userId?.username),
           profile: fb.userId?.profile || "https://via.placeholder.com/40",
         }));
         const totalUserRatings = feedback.reduce((sum, fb) => sum + fb.rating, 0);
@@ -102,7 +111,7 @@ exports.getFeedbackByPsychicId = async (req, res) => {
         .lean();
       overallFeedback = overallFeedback.map((fb) => ({
         ...fb,
-        userName: fb.userId?.username || "Anonymous",
+        userName: safeReviewerName(fb.userId?.username),
         profile: fb.userId?.profile || "https://via.placeholder.com/40",
       }));
       const totalOverallRatings = overallFeedback.reduce((sum, fb) => sum + fb.rating, 0);
@@ -111,7 +120,7 @@ exports.getFeedbackByPsychicId = async (req, res) => {
     } else {
       overallFeedback = feedback.map((fb) => ({
         ...fb,
-        userName: fb.userId?.username || "Anonymous",
+        userName: safeReviewerName(fb.userId?.username),
         profile: fb.userId?.profile || "https://via.placeholder.com/40",
       }));
     }
@@ -167,7 +176,7 @@ exports.getAllFeedback = async (req, res) => {
       }
       acc[psychicId].feedback.push({
         ...fb,
-        userName: fb.userId?.username || "Anonymous",
+        userName: safeReviewerName(fb.userId?.username),
         profile: fb.userId?.profile || "https://via.placeholder.com/40",
       });
       acc[psychicId].totalRatings += fb.rating;
@@ -219,7 +228,7 @@ exports.fetchAllRatings = async (req, res) => {
     const formattedFeedback = feedback.map((fb) => ({
       _id: fb._id,
       userId: fb.userId?._id || null,
-      userName: fb.userId?.username || "Anonymous",
+      userName: safeReviewerName(fb.userId?.username),
       profile: fb.userId?.image || "https://via.placeholder.com/40",
       psychicId: fb.psychicId,
       rating: fb.rating,
