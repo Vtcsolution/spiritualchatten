@@ -399,12 +399,17 @@ const getWesternChartDataFromAstrologyAPI = async (formData, coords) => {
   const moon = findPlanet("moon");
   const venus = findPlanet("venus");
   const mars = findPlanet("mars");
+  // general_ascendant_report/tropical returns { ascendant: "Leo", report: "..." }
+  // — not { sign, house } — fall back to the Ascendant entry planets/tropical
+  // itself returns, in case that shape ever changes.
+  const ascendantSign = ascendantData.ascendant || findPlanet("ascendant")?.sign || "Unknown";
 
   return {
     sunSign: sun?.sign || getSignFromDate(formData.birthDate) || "Unknown",
     moonSign: moon?.sign || "Unknown",
-    ascendant: ascendantData.sign || "Unknown",
+    ascendant: ascendantSign,
     ascendantDegree: 0,
+    ascendantReport: ascendantData.report || null,
     planets,
     houses: {},
     ianaTz: 'UTC',
@@ -1408,5 +1413,9 @@ module.exports = {
   getChatHistory,
   getUserChatDetails,
   getChatMessagesById,
-  deleteChatById
+  deleteChatById,
+  // Exported so it can be exercised directly by a standalone verification
+  // script (scripts/testAstrologyApiConnection.js) without going through
+  // the full HTTP/chat pipeline.
+  getWesternChartDataFromAstrologyAPI,
 };
