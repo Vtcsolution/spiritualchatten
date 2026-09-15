@@ -1670,17 +1670,20 @@ const isPsychicAvailable = (psychicId) => {
   const renderNumerologyForm = () => (
     <div className="space-y-4">
       <div>
-        <Label>Name *</Label>
+        <Label>Full First Name *</Label>
         <br></br>
         <Input
           type="text"
           name="name"
           value={formData.name}
           onChange={handleInputChange}
-          placeholder="First Name"
+          placeholder="e.g. Alexander (not Alex or A.)"
           required
           className="rounded-md border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-gray-300"
         />
+        <p className="text-xs text-gray-500 mt-1">
+          Please enter your complete first name, not an abbreviation or initial — this is required for an accurate astrology and numerology reading.
+        </p>
       </div>
       <div>
         <Label>Date of Birth *</Label>
