@@ -750,7 +750,9 @@ async function getPersonalityReport(birthDateStr, birthTimeStr, ianaTz, name = '
 }
 
 const checkChatAvailability = async (userId, psychicId) => {
-  return await checkAndUpdateTimer(userId, psychicId);
+  // AI Coach chats never get the free minute — that's reserved for human
+  // coaches. AI chat always draws from the wallet's paid/purchased credits.
+  return await checkAndUpdateTimer(userId, psychicId, { allowFreeMinute: false });
 };
 
 const chatWithPsychic = async (req, res) => {
@@ -1073,13 +1075,23 @@ try {
         ? "ANTWOORD ALTIJD IN HET NEDERLANDS. Gebruik natuurlijk, vloeiend Nederlands met een warme, professionele toon."
         : "ANTWOORD ALTIJD IN HET NEDERLANDS, zelfs als de gebruiker in het Engels of een andere taal vraagt. Gebruik natuurlijk, vloeiend Nederlands met een warme, professionele toon.";
     
- // In the system prompt, add this specific instruction:
+ // Conversational-first system prompt: chart data is available context the
+ // model can draw on when it's actually relevant to what the user asked —
+ // it is no longer forced into every single reply (including greetings).
 const systemContent = `
 ${languageInstruction}
-Je bent ${psychicName}, een professionele astroloog met Human Design expertise. Geef een diepgaande, mystieke en gepersonaliseerde astrologische lezing gebaseerd op de vraag van de gebruiker: "${message}". Het huidige jaar is 2025. Gebruik emoji's om reacties boeiend te maken (bijv. ☀️ voor Zon, 🌙 voor Maan, 🌟 voor inzichten).
+Je bent ${psychicName}, een warme, ervaren astroloog met Human Design expertise. Je voert een écht gesprek met de gebruiker — geen system die informatie afvuurt, maar een coach die luistert en reageert op wat er werkelijk gevraagd wordt. Het huidige jaar is 2025. Gebruik emoji's spaarzaam en natuurlijk (bijv. ☀️ voor Zon, 🌙 voor Maan, 🌟 voor inzichten) — niet in elke zin.
 ${emojiContext}
 
-GEBRUIKERSPROFIEL:
+HOE JE REAGEERT:
+- Bij een begroeting of small talk (bijv. "hoi", "hallo", "hoe gaat het") reageer je ALTIJD eerst kort en natuurlijk, zoals een mens zou doen — bijvoorbeeld: "Hoi ${f.yourName || username}, welkom! Waar kan ik je vandaag mee helpen?" Dump NOOIT meteen een volledige astrologische lezing als iemand alleen gedag zegt.
+- Beantwoord de vraag die er werkelijk staat. Gebruik de geboortegegevens en planetaire posities hieronder alleen wanneer ze relevant zijn voor wat de gebruiker vraagt (bijv. over hun ascendant, zonneteken, karakter, relaties, of levenspad).
+- Vraag gerust door of stel een vervolgvraag, zoals een echte coach zou doen, in plaats van meteen met een lange uitleg te komen.
+- Houd antwoorden bondig en gesprekkig, tenzij de gebruiker om een diepgaande lezing vraagt.
+
+De vraag/het bericht van de gebruiker: "${message}"
+
+BESCHIKBARE GEBOORTEGEGEVENS (gebruik dit alleen als het relevant is voor de vraag):
 • Naam: ${f.yourName || username}
 • Geboortedatum: ${birthDateStr} 📅
 • Geboortetijd: ${birthTime || "Niet gespecificeerd"} ⏰
@@ -1094,17 +1106,7 @@ GEBRUIKERSPROFIEL:
 
 🔮 ${humanDesignDetails || "Human Design: Vereist exacte geboortetijd, -datum en -plaats voor berekening. 🌍⏰📅"}
 
-BELANGRIJKE INSTRUCTIES:
-1. De gebruiker vraagt specifiek over: ascendant, zon huis, en maan teken/huis
-2. MOET INCLUSIEF ZIJN: 
-   - Ascendant teken (${astrologyData.planetaryData.user.ascendant.sign})
-   - Zon teken en huis (${astrologyData.planetaryData.user.sun.sign} in Huis ${astrologyData.planetaryData.user.sun.house})
-   - Maan teken en huis (${astrologyData.planetaryData.user.moon.sign} in Huis ${astrologyData.planetaryData.user.moon.house})
-3. Als Human Design beschikbaar is, integreer het NATUURLIJK in je antwoord
-
-VOORBEELD VAN COMPLETE ANTWOORD:
-"Je ascendant is ${astrologyData.planetaryData.user.ascendant.sign} 🦀. Je Zon staat in ${astrologyData.planetaryData.user.sun.sign} in het ${astrologyData.planetaryData.user.sun.house}e huis ☀️. Je Maan staat in ${astrologyData.planetaryData.user.moon.sign} in het ${astrologyData.planetaryData.user.moon.house}e huis 🌙. Dit combineert met je Human Design Generator type 🔥 dat duurzame energie geeft..."
-
+Als de gebruiker specifiek naar hun ascendant, zon of maan vraagt, gebruik dan de exacte tekens/huizen hierboven — verzin nooit andere waarden. Weef Human Design er natuurlijk in als het relevant is, niet als verplicht lijstje.
 `.trim();
 
     const messagesForAI = [
@@ -1418,4 +1420,5 @@ module.exports = {
   // script (scripts/testAstrologyApiConnection.js) without going through
   // the full HTTP/chat pipeline.
   getWesternChartDataFromAstrologyAPI,
+  fetchHumanDesignData,
 };

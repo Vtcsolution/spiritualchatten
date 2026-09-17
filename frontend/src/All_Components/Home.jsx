@@ -2108,6 +2108,8 @@ const isPsychicAvailable = (psychicId) => {
                     </div>
                   )}
                   {/* AI Coach at the Bottom */}
+                  {aiCoachEnabled && (
+                  <>
                   <h2 className="text-2xl font-bold mb-4">Astrology AI Coach</h2>
                   {isLoadingPsychics ? (
                     <div className="flex justify-center p-6">
@@ -2225,6 +2227,8 @@ const isPsychicAvailable = (psychicId) => {
                         </div>
                       ))}
                     </div>
+                  )}
+                  </>
                   )}
                 </TabsContent>
               </Tabs>

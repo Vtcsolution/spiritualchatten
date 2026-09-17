@@ -5,12 +5,14 @@ const User = require("../models/User");
 
 const freeMinutes = 1;
 
-const checkAndUpdateTimer = async (userId, psychicId) => {
+// `allowFreeMinute: false` skips the free-minute grant entirely (used for
+// AI Coach chats — free minutes/credits are reserved for human coaches only).
+const checkAndUpdateTimer = async (userId, psychicId, { allowFreeMinute = true } = {}) => {
   const now = new Date();
   const user = await User.findById(userId);
 
   // Check if user has a free minute
-  if (!user.hasUsedFreeMinute) {
+  if (allowFreeMinute && !user.hasUsedFreeMinute) {
     let session = await ActiveSession.findOne({ userId, psychicId });
 
     if (!session) {
