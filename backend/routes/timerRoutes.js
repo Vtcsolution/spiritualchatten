@@ -5,6 +5,7 @@ const { checkAndUpdateTimer } = require("../middleware/timerMiddleware");
 const ActiveSession = require("../models/ActiveSession");
 const Wallet = require("../models/Wallet");
 const User = require("../models/User");
+const AiPsychic = require("../models/aiPsychic");
 const mongoose = require("mongoose");
 
 const freeMinutes = 1;
@@ -23,6 +24,23 @@ router.get("/session-status/:psychicId", protect, checkAndUpdateTimer, async (re
     let session = await ActiveSession.findOne({ userId, psychicId });
     const wallet = await Wallet.findOne({ userId });
     const now = new Date();
+
+    // Free minutes/credits are reserved for human coaches — an AI psychic
+    // never reports as free, even if a stale free ActiveSession exists from
+    // before this restriction was added.
+    const isAiPsychic = await AiPsychic.exists({ _id: psychicId });
+    if (isAiPsychic) {
+      return res.json({
+        isFree: false,
+        remainingFreeTime: 0,
+        paidTimer: session?.paidSession && session.paidStartTime
+          ? Math.max(0, session.initialCredits * 60 - Math.floor((now - session.paidStartTime) / 1000))
+          : 0,
+        credits: wallet?.credits || 0,
+        status: session?.paidSession ? "paid" : "stopped",
+        freeSessionUsed: true,
+      });
+    }
 
     if (user.hasUsedFreeMinute) {
       return res.json({
@@ -75,6 +93,14 @@ router.post("/start-free-session/:psychicId", protect, async (req, res) => {
 
     if (!userId || !mongoose.isValidObjectId(psychicId)) {
       return res.status(400).json({ error: "Invalid user or psychic ID" });
+    }
+
+    // Free minutes are reserved for human coaches. Return the same error
+    // shape as "already used" so the existing frontend handling (skip
+    // straight to the paid flow) applies without any frontend changes.
+    const isAiPsychic = await AiPsychic.exists({ _id: psychicId });
+    if (isAiPsychic) {
+      return res.status(400).json({ error: "Free minute already used" });
     }
 
     const user = await User.findById(userId);
