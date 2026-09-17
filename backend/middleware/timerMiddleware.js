@@ -13,10 +13,6 @@ const checkAndUpdateTimer = async (req, res, next) => {
       return res.status(400).json({ error: "Invalid user or psychic ID" });
     }
 
-    // AI Coach chats spend from the separate aiCredits balance, never the
-    // shared/free credits pool reserved for human coaches.
-    const creditField = (await AiPsychic.exists({ _id: psychicId })) ? "aiCredits" : "credits";
-
     // Lock wallet to prevent concurrent updates
     let wallet = await Wallet.findOneAndUpdate(
       { userId, lock: false },
@@ -26,6 +22,14 @@ const checkAndUpdateTimer = async (req, res, next) => {
 
     if (!wallet) {
       return res.status(400).json({ error: "Wallet locked or not found" });
+    }
+
+    // AI Coach chats require at least one purchase before they can spend
+    // from `credits` at all — the free signup grant alone can never fund it.
+    const isAiPsychic = await AiPsychic.exists({ _id: psychicId });
+    if (isAiPsychic && !wallet.hasEverPurchased) {
+      await Wallet.updateOne({ userId }, { $set: { lock: false } });
+      return res.status(400).json({ error: "Purchase credits to chat with the AI Coach" });
     }
 
     try {
@@ -43,7 +47,7 @@ const checkAndUpdateTimer = async (req, res, next) => {
           isFree: false,
           remainingFreeTime: 0,
           paidTimer: 0,
-          credits: wallet[creditField],
+          credits: wallet.credits,
           status: "stopped",
           freeSessionUsed: true,
         });
@@ -76,14 +80,14 @@ const checkAndUpdateTimer = async (req, res, next) => {
 
           // Check if credits changed
           let creditsChanged = false;
-          if (wallet[creditField] !== remainingCredits) {
-            wallet[creditField] = remainingCredits;
+          if (wallet.credits !== remainingCredits) {
+            wallet.credits = remainingCredits;
             creditsChanged = true;
           }
 
           // Stop session only when remaining time is exactly 0
-          if (remainingTime === 0 && wallet[creditField] > 0) {
-            wallet[creditField] = Math.max(0, wallet[creditField] - 1); // Deduct final credit
+          if (remainingTime === 0 && wallet.credits > 0) {
+            wallet.credits = Math.max(0, wallet.credits - 1); // Deduct final credit
             creditsChanged = true;
 
             await ActiveSession.updateOne(
@@ -107,7 +111,7 @@ const checkAndUpdateTimer = async (req, res, next) => {
               isFree: false,
               remainingFreeTime: 0,
               paidTimer: 0,
-              credits: wallet[creditField],
+              credits: wallet.credits,
               status: "stopped",
               showFeedbackModal: true,
               freeSessionUsed: true,
@@ -125,7 +129,7 @@ const checkAndUpdateTimer = async (req, res, next) => {
               isFree: false,
               remainingFreeTime: 0,
               paidTimer: remainingTime,
-              credits: wallet[creditField],
+              credits: wallet.credits,
               status: "paid",
               freeSessionUsed: true,
             });
@@ -144,7 +148,7 @@ const checkAndUpdateTimer = async (req, res, next) => {
 
       // Check if wallet has enough credits to continue or start a paid session
       if (!session || !session.paidSession) {
-        if (!wallet || wallet[creditField] <= 0) {
+        if (!wallet || wallet.credits <= 0) {
           return res.status(400).json({ error: "Not enough credits" });
         }
       }

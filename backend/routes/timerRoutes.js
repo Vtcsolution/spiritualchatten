@@ -36,7 +36,7 @@ router.get("/session-status/:psychicId", protect, checkAndUpdateTimer, async (re
         paidTimer: session?.paidSession && session.paidStartTime
           ? Math.max(0, session.initialCredits * 60 - Math.floor((now - session.paidStartTime) / 1000))
           : 0,
-        credits: wallet?.aiCredits || 0,
+        credits: wallet?.hasEverPurchased ? (wallet?.credits || 0) : 0,
         status: session?.paidSession ? "paid" : "stopped",
         freeSessionUsed: true,
       });
@@ -172,9 +172,7 @@ router.post("/start-paid-session/:psychicId", protect, checkAndUpdateTimer, asyn
       return res.status(400).json({ error: "Invalid user or psychic ID" });
     }
 
-    // AI Coach chats spend from the separate aiCredits balance, never the
-    // shared/free credits pool reserved for human coaches.
-    const creditField = (await AiPsychic.exists({ _id: psychicId })) ? "aiCredits" : "credits";
+    const isAiPsychic = await AiPsychic.exists({ _id: psychicId });
 
     // Lock wallet to prevent concurrent updates with retry
     let wallet;
@@ -197,7 +195,13 @@ router.post("/start-paid-session/:psychicId", protect, checkAndUpdateTimer, asyn
     }
 
     try {
-      if (wallet[creditField] < 1) {
+      // AI Coach chats require at least one purchase before spending from
+      // `credits` — the free signup grant alone can never fund it.
+      if (isAiPsychic && !wallet.hasEverPurchased) {
+        return res.status(400).json({ error: "Purchase credits to chat with the AI Coach" });
+      }
+
+      if (wallet.credits < 1) {
         return res.status(400).json({ error: "Not enough credits" });
       }
 
@@ -240,7 +244,7 @@ router.post("/start-paid-session/:psychicId", protect, checkAndUpdateTimer, asyn
 
         const secondsSinceStart = Math.floor((new Date() - otherSession.paidStartTime) / 1000);
         const creditsToDeduct = Math.ceil(secondsSinceStart / 60);
-        wallet[creditField] = Math.max(0, otherSession.initialCredits - creditsToDeduct);
+        wallet.credits = Math.max(0, otherSession.initialCredits - creditsToDeduct);
 
         await ActiveSession.updateOne(
           { _id: otherSession._id },
@@ -262,7 +266,7 @@ router.post("/start-paid-session/:psychicId", protect, checkAndUpdateTimer, asyn
           isFree: false,
           remainingFreeTime: 0,
           paidTimer: 0,
-          credits: wallet[creditField],
+          credits: wallet.credits,
           status: "stopped",
           showFeedbackModal: true,
         });
@@ -282,7 +286,7 @@ router.post("/start-paid-session/:psychicId", protect, checkAndUpdateTimer, asyn
           lastChargeTime: now,
           paidSession: true,
           paidStartTime: now,
-          initialCredits: wallet[creditField],
+          initialCredits: wallet.credits,
           freeSessionUsed: true,
           isArchived: false,
           lock: false,
@@ -297,7 +301,7 @@ router.post("/start-paid-session/:psychicId", protect, checkAndUpdateTimer, asyn
               $set: {
                 paidSession: true,
                 paidStartTime: now,
-                initialCredits: wallet[creditField],
+                initialCredits: wallet.credits,
                 freeSessionUsed: true,
                 remainingFreeTime: 0,
                 isArchived: false,
@@ -319,14 +323,14 @@ router.post("/start-paid-session/:psychicId", protect, checkAndUpdateTimer, asyn
         currentSession = sessionLock;
       }
 
-      const paidTimer = wallet[creditField] * 60;
+      const paidTimer = wallet.credits * 60;
 
       res.json({
         success: true,
         isFree: false,
         remainingFreeTime: 0,
         paidTimer,
-        credits: wallet[creditField],
+        credits: wallet.credits,
         status: "paid",
         freeSessionUsed: true,
       });
@@ -337,7 +341,7 @@ router.post("/start-paid-session/:psychicId", protect, checkAndUpdateTimer, asyn
         isFree: false,
         remainingFreeTime: 0,
         paidTimer,
-        credits: wallet[creditField],
+        credits: wallet.credits,
         status: "paid",
         freeSessionUsed: true,
       });
@@ -365,10 +369,6 @@ router.post("/stop-session/:psychicId", protect, async (req, res) => {
     if (!userId || !mongoose.isValidObjectId(psychicId)) {
       return res.status(400).json({ error: "Invalid user or psychic ID" });
     }
-
-    // AI Coach chats spend from the separate aiCredits balance, never the
-    // shared/free credits pool reserved for human coaches.
-    const creditField = (await AiPsychic.exists({ _id: psychicId })) ? "aiCredits" : "credits";
 
     // Lock wallet with retry
     let wallet;
@@ -412,7 +412,7 @@ router.post("/stop-session/:psychicId", protect, async (req, res) => {
 
       const secondsSinceStart = Math.floor((new Date() - currentSession.paidStartTime) / 1000);
       const creditsToDeduct = Math.ceil(secondsSinceStart / 60);
-      wallet[creditField] = Math.max(0, currentSession.initialCredits - creditsToDeduct);
+      wallet.credits = Math.max(0, currentSession.initialCredits - creditsToDeduct);
       const remainingTime = Math.max(0, currentSession.initialCredits * 60 - secondsSinceStart);
 
       await ActiveSession.updateOne(
@@ -434,7 +434,7 @@ router.post("/stop-session/:psychicId", protect, async (req, res) => {
         isFree: false,
         remainingFreeTime: 0,
         paidTimer: remainingTime,
-        credits: wallet[creditField],
+        credits: wallet.credits,
         status: "stopped",
         showFeedbackModal: true,
         freeSessionUsed: true,
@@ -446,7 +446,7 @@ router.post("/stop-session/:psychicId", protect, async (req, res) => {
         isFree: false,
         remainingFreeTime: 0,
         paidTimer: remainingTime,
-        credits: wallet[creditField],
+        credits: wallet.credits,
         status: "stopped",
         showFeedbackModal: true,
         freeSessionUsed: true,

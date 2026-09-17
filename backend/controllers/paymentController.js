@@ -141,7 +141,10 @@ exports.handleWebhook = async (req, res) => {
               balance: dbPayment.creditsPurchased,
               credits: dbPayment.creditsPurchased
             },
-            $set: { lastTopup: new Date() }
+            // A real purchase unlocks the AI Coach -- it can now spend from
+            // this same `credits` balance, whereas the free signup grant
+            // alone never could.
+            $set: { lastTopup: new Date(), hasEverPurchased: true }
           },
           { upsert: true, new: true }
         );
@@ -216,7 +219,7 @@ exports.checkPaymentStatus = async (req, res) => {
                 balance: payment.creditsPurchased,
                 credits: payment.creditsPurchased
               },
-              $set: { lastTopup: new Date() }
+              $set: { lastTopup: new Date(), hasEverPurchased: true }
             },
             { upsert: true, new: true }
           );
