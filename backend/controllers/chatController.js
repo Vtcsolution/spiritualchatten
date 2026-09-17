@@ -750,9 +750,10 @@ async function getPersonalityReport(birthDateStr, birthTimeStr, ianaTz, name = '
 }
 
 const checkChatAvailability = async (userId, psychicId) => {
-  // AI Coach chats never get the free minute — that's reserved for human
-  // coaches. AI chat always draws from the wallet's paid/purchased credits.
-  return await checkAndUpdateTimer(userId, psychicId, { allowFreeMinute: false });
+  // AI Coach chats never get the free minute, and never draw from the free
+  // signup / human-coach credit pool — they spend only from the wallet's
+  // separate aiCredits balance, which is never auto-granted.
+  return await checkAndUpdateTimer(userId, psychicId, { allowFreeMinute: false, creditField: "aiCredits" });
 };
 
 const chatWithPsychic = async (req, res) => {

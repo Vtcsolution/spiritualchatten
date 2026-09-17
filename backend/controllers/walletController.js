@@ -34,7 +34,11 @@ exports.getWalletBalance = async (req, res) => {
 
 exports.addCredits = async (req, res) => {
   try {
-    const { userId, credits } = req.body;
+    const { userId, credits, type } = req.body;
+    // 'credits' (default): the shared/free balance human coaches draw from.
+    // 'aiCredits': the separate balance only the AI Coach draws from --
+    // never auto-granted, so this is currently the only way to fund it.
+    const field = type === "aiCredits" ? "aiCredits" : "credits";
 
     // Validate input
     if (!userId || !credits || credits <= 0) {
@@ -60,22 +64,25 @@ exports.addCredits = async (req, res) => {
         userId,
         balance: 0,
         credits: 0,
+        aiCredits: 0,
       });
     }
 
     // Update credits
-    wallet.credits = (wallet.credits || 0) + parseFloat(credits);
+    wallet[field] = (wallet[field] || 0) + parseFloat(credits);
     await wallet.save();
 
     // Emit the updated balance to the user's room
     req.io.to(userId).emit("walletUpdate", {
       credits: wallet.credits,
+      aiCredits: wallet.aiCredits,
     });
 
     res.json({
       success: true,
-      message: `Successfully added ${credits} credits to user ${userId}`,
+      message: `Successfully added ${credits} ${field} to user ${userId}`,
       credits: wallet.credits,
+      aiCredits: wallet.aiCredits,
     });
   } catch (error) {
     console.error("Error adding credits:", error);

@@ -7,7 +7,10 @@ const freeMinutes = 1;
 
 // `allowFreeMinute: false` skips the free-minute grant entirely (used for
 // AI Coach chats — free minutes/credits are reserved for human coaches only).
-const checkAndUpdateTimer = async (userId, psychicId, { allowFreeMinute = true } = {}) => {
+// `creditField` picks which Wallet balance funds the paid session: 'credits'
+// (the shared/free balance, used by human coaches) or 'aiCredits' (a
+// separate balance only AI Coach chats draw from — see Wallet model).
+const checkAndUpdateTimer = async (userId, psychicId, { allowFreeMinute = true, creditField = "credits" } = {}) => {
   const now = new Date();
   const user = await User.findById(userId);
 
@@ -42,8 +45,9 @@ const checkAndUpdateTimer = async (userId, psychicId, { allowFreeMinute = true }
 
   // Check wallet for paid session
   const wallet = await Wallet.findOne({ userId });
-  if (!wallet || wallet.credits <= 0) {
-    console.log(`[Timer] No credits available for user ${userId}`);
+  const balance = wallet ? (wallet[creditField] || 0) : 0;
+  if (!wallet || balance <= 0) {
+    console.log(`[Timer] No ${creditField} available for user ${userId}`);
     return { available: false, message: "Purchase credits to continue chatting." };
   }
 
@@ -58,9 +62,9 @@ const checkAndUpdateTimer = async (userId, psychicId, { allowFreeMinute = true }
       isArchived: false,
       paidSession: true,
       paidStartTime: now,
-      initialCredits: wallet.credits, // Initialize with current credits
+      initialCredits: balance, // Initialize with current credits
     });
-    console.log(`[Timer] New paid session created for user ${userId} with ${wallet.credits} credits`);
+    console.log(`[Timer] New paid session created for user ${userId} with ${balance} ${creditField}`);
   }
 
   // Check if paid session is active
@@ -75,15 +79,15 @@ const checkAndUpdateTimer = async (userId, psychicId, { allowFreeMinute = true }
     }
 
     // If time is up, try to deduct more credits to extend session
-    if (wallet.credits >= 1) {
+    if (balance >= 1) {
       await Wallet.updateOne(
         { userId, lock: false },
-        { $inc: { credits: -1 }, $set: { lock: false } }
+        { $inc: { [creditField]: -1 }, $set: { lock: false } }
       );
       session.paidStartTime = now; // Reset timer for new credit
       session.initialCredits = 1; // Allocate 1 credit for new period
       await session.save();
-      console.log(`[Timer] Extended paid session for user ${userId} with 1 new credit`);
+      console.log(`[Timer] Extended paid session for user ${userId} with 1 new ${creditField}`);
       return { available: true, isFree: false, remainingTime: 60 };
     }
 
@@ -99,20 +103,20 @@ const checkAndUpdateTimer = async (userId, psychicId, { allowFreeMinute = true }
   // Start new paid session if credits available
   const minutesToCharge = Math.ceil((now - session.lastChargeTime) / 60000);
   if (minutesToCharge >= 1) {
-    if (wallet.credits < minutesToCharge) {
-      console.log(`[Timer] Insufficient credits for user ${userId}: need ${minutesToCharge}, have ${wallet.credits}`);
+    if (balance < minutesToCharge) {
+      console.log(`[Timer] Insufficient ${creditField} for user ${userId}: need ${minutesToCharge}, have ${balance}`);
       return { available: false, message: "Purchase credits to continue chatting." };
     }
     await Wallet.updateOne(
       { userId, lock: false },
-      { $inc: { credits: -minutesToCharge }, $set: { lock: false } }
+      { $inc: { [creditField]: -minutesToCharge }, $set: { lock: false } }
     );
     session.lastChargeTime = now;
     session.paidSession = true;
     session.paidStartTime = now;
     session.initialCredits = minutesToCharge; // Set initialCredits for new paid session
     await session.save();
-    console.log(`[Timer] Deducted ${minutesToCharge} credits for user ${userId}, new paid session started`);
+    console.log(`[Timer] Deducted ${minutesToCharge} ${creditField} for user ${userId}, new paid session started`);
   }
 
   return { available: true, isFree: false, remainingTime: session.initialCredits * 60 };

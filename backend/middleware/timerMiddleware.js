@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const ActiveSession = require("../models/ActiveSession");
 const Wallet = require("../models/Wallet");
+const AiPsychic = require("../models/aiPsychic");
 
 const checkAndUpdateTimer = async (req, res, next) => {
   const { psychicId } = req.params;
@@ -11,6 +12,10 @@ const checkAndUpdateTimer = async (req, res, next) => {
     if (!userId || !mongoose.isValidObjectId(psychicId)) {
       return res.status(400).json({ error: "Invalid user or psychic ID" });
     }
+
+    // AI Coach chats spend from the separate aiCredits balance, never the
+    // shared/free credits pool reserved for human coaches.
+    const creditField = (await AiPsychic.exists({ _id: psychicId })) ? "aiCredits" : "credits";
 
     // Lock wallet to prevent concurrent updates
     let wallet = await Wallet.findOneAndUpdate(
@@ -38,7 +43,7 @@ const checkAndUpdateTimer = async (req, res, next) => {
           isFree: false,
           remainingFreeTime: 0,
           paidTimer: 0,
-          credits: wallet.credits,
+          credits: wallet[creditField],
           status: "stopped",
           freeSessionUsed: true,
         });
@@ -71,14 +76,14 @@ const checkAndUpdateTimer = async (req, res, next) => {
 
           // Check if credits changed
           let creditsChanged = false;
-          if (wallet.credits !== remainingCredits) {
-            wallet.credits = remainingCredits;
+          if (wallet[creditField] !== remainingCredits) {
+            wallet[creditField] = remainingCredits;
             creditsChanged = true;
           }
 
           // Stop session only when remaining time is exactly 0
-          if (remainingTime === 0 && wallet.credits > 0) {
-            wallet.credits = Math.max(0, wallet.credits - 1); // Deduct final credit
+          if (remainingTime === 0 && wallet[creditField] > 0) {
+            wallet[creditField] = Math.max(0, wallet[creditField] - 1); // Deduct final credit
             creditsChanged = true;
 
             await ActiveSession.updateOne(
@@ -102,7 +107,7 @@ const checkAndUpdateTimer = async (req, res, next) => {
               isFree: false,
               remainingFreeTime: 0,
               paidTimer: 0,
-              credits: wallet.credits,
+              credits: wallet[creditField],
               status: "stopped",
               showFeedbackModal: true,
               freeSessionUsed: true,
@@ -120,7 +125,7 @@ const checkAndUpdateTimer = async (req, res, next) => {
               isFree: false,
               remainingFreeTime: 0,
               paidTimer: remainingTime,
-              credits: wallet.credits,
+              credits: wallet[creditField],
               status: "paid",
               freeSessionUsed: true,
             });
@@ -139,7 +144,7 @@ const checkAndUpdateTimer = async (req, res, next) => {
 
       // Check if wallet has enough credits to continue or start a paid session
       if (!session || !session.paidSession) {
-        if (!wallet || wallet.credits <= 0) {
+        if (!wallet || wallet[creditField] <= 0) {
           return res.status(400).json({ error: "Not enough credits" });
         }
       }

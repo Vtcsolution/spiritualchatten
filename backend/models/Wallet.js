@@ -17,6 +17,16 @@ const walletSchema = new mongoose.Schema({
     default: 0,
     min: 0,
   },
+  // Separate balance the AI Coach exclusively draws from. Free signup
+  // credits and human-coach spending never touch this field, and it is
+  // never auto-granted — it only increases via an admin grant (or, once
+  // wired up, a dedicated AI-credits purchase). This is what guarantees
+  // the AI Coach can never be paid for with free/human-coach credits.
+  aiCredits: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
   lock: { type: Boolean, default: false }, // For concurrent update prevention
 }, { timestamps: true });
 
@@ -27,6 +37,9 @@ walletSchema.index({ userId: 1, lock: 1 }); // Optimize queries for wallet updat
 walletSchema.pre("save", function (next) {
   if (this.credits < 0) {
     return next(new Error("Credits cannot be negative"));
+  }
+  if (this.aiCredits < 0) {
+    return next(new Error("AI credits cannot be negative"));
   }
   if (this.balance < 0) {
     return next(new Error("Balance cannot be negative"));

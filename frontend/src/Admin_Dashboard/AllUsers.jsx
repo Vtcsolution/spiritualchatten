@@ -181,17 +181,18 @@ const AllUsers = () => {
     }
   };
 
-  const handleAddCredits = async (userId) => {
+  const handleAddCredits = async (userId, type = "credits") => {
     try {
       setIsAddingCredits(true);
       await axios.post(`${import.meta.env.VITE_BASE_URL}/api/wallet/add-credits`, {
         userId,
-        credits: parseFloat(creditsToAdd)
+        credits: parseFloat(creditsToAdd),
+        type,
       }, {
         headers: { Authorization: `Bearer ${admin.token}` },
         withCredentials: true,
       });
-      toast.success(`Successfully added ${creditsToAdd} credits`);
+      toast.success(`Successfully added ${creditsToAdd} ${type === "aiCredits" ? "AI credits" : "credits"}`);
       setCreditsToAdd("");
       fetchPsychics(pagination.currentPage, pagination.limit);
     } catch (err) {
@@ -382,12 +383,12 @@ const AllUsers = () => {
                               <DialogHeader>
                                 <DialogTitle>Add Credits to {psychic.username}</DialogTitle>
                                 <DialogDescription>
-                                  Enter the amount of credits to add to this user's account
+                                  "Credits" are the shared/free balance used for human coaches. "AI Credits" are a separate balance only the AI Coach draws from — free signup credits never work there.
                                 </DialogDescription>
                               </DialogHeader>
                               <div className="grid gap-4 py-4">
                                 <div className="grid grid-cols-4 items-center gap-4">
-                                  <Label htmlFor="credits" className="text-right">Credits</Label>
+                                  <Label htmlFor="credits" className="text-right">Amount</Label>
                                   <Input
                                     id="credits"
                                     type="number"
@@ -399,10 +400,17 @@ const AllUsers = () => {
                                   />
                                 </div>
                               </div>
-                              <DialogFooter>
+                              <DialogFooter className="flex-col sm:flex-row gap-2">
+                                <Button
+                                  variant="outline"
+                                  onClick={() => handleAddCredits(psychic._id, "aiCredits")}
+                                  disabled={isAddingCredits || !creditsToAdd || creditsToAdd <= 0}
+                                >
+                                  {isAddingCredits ? "Adding..." : "Add AI Credits"}
+                                </Button>
                                 <Button
                                   variant="brand"
-                                  onClick={() => handleAddCredits(psychic._id)}
+                                  onClick={() => handleAddCredits(psychic._id, "credits")}
                                   disabled={isAddingCredits || !creditsToAdd || creditsToAdd <= 0}
                                 >
                                   {isAddingCredits ? "Adding..." : "Add Credits"}

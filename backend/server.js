@@ -82,25 +82,37 @@ app.use(async (req, res, next) => {
 
   try {
     const Visitor = require('./models/Visitor');
-    // Check for existing visitor record in the last 24 hours
-    const recentVisit = await Visitor.findOne({
-      sessionId,
-      timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-    });
+    const day = new Date().toISOString().split('T')[0]; // UTC day bucket
 
-    if (!recentVisit) {
-      const visitorData = {
-        sessionId,
-        browser: result.browser.name || 'Unknown',
-        browserVersion: result.browser.version || 'Unknown',
-        os: result.os.name || 'Unknown',
-        osVersion: result.os.version || 'Unknown',
-        device: result.device.type || 'desktop',
-        ip: req.ip,
-        path: req.path,
-        timestamp: new Date(),
-      };
-      await Visitor.create(visitorData);
+    // Atomic upsert keyed on (sessionId, day) — a single page load fires
+    // several parallel API calls, and a plain findOne-then-create here was
+    // not atomic, so those concurrent requests could all pass the "no
+    // recent visit" check before any of them finished writing, creating
+    // several duplicate Visitor rows for one real visit. The unique index
+    // on the model makes this upsert race-safe: only one document per
+    // session per day can ever exist, and a losing concurrent upsert just
+    // hits a harmless duplicate-key error we ignore below.
+    try {
+      await Visitor.findOneAndUpdate(
+        { sessionId, day },
+        {
+          $setOnInsert: {
+            sessionId,
+            day,
+            browser: result.browser.name || 'Unknown',
+            browserVersion: result.browser.version || 'Unknown',
+            os: result.os.name || 'Unknown',
+            osVersion: result.os.version || 'Unknown',
+            device: result.device.type || 'desktop',
+            ip: req.ip,
+            path: req.path,
+            timestamp: new Date(),
+          },
+        },
+        { upsert: true, setDefaultsOnInsert: true }
+      );
+    } catch (upsertErr) {
+      if (upsertErr.code !== 11000) throw upsertErr; // ignore harmless race, rethrow anything else
     }
   } catch (err) {
     console.error('Error in visitor tracking middleware:', err);

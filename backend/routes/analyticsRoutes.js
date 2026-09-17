@@ -4,25 +4,11 @@ const Visitor = require('../models/Visitor');
 
 router.get('/visitor-stats', async (req, res) => {
   try {
-    // Aggregate by sessionId to count unique visitors per day
+    // Each Visitor document is already unique per (sessionId, day) thanks
+    // to the model's unique index, so counting documents per day IS the
+    // unique-visitor count — no need to re-dedupe by sessionId here.
     const dailyVisitorStats = await Visitor.aggregate([
-      {
-        $group: {
-          _id: {
-            sessionId: '$sessionId',
-            date: {
-              $dateToString: { format: '%Y-%m-%d', date: '$timestamp' },
-            },
-          },
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $group: {
-          _id: '$_id.date',
-          uniqueVisitors: { $sum: 1 },
-        },
-      },
+      { $group: { _id: '$day', uniqueVisitors: { $sum: 1 } } },
       { $sort: { _id: 1 } },
     ]);
 
