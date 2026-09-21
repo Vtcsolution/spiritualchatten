@@ -1023,7 +1023,15 @@ Je kunt nu vragen stellen over compatibiliteit, relaties of diepere inzichten! ð
     
     let birthDateStr = birthDate instanceof Date ? birthDate.toISOString().split("T")[0] : birthDate || "Not provided";
     let roxyApiWorking = false;
-    
+    // Both declared here (not inside the try below) because they're read
+    // much later when building the prompt and the `sources` metadata --
+    // this is the exact same try-block-scoping bug already fixed for
+    // message/userId/psychicId, just with two more variables. This one was
+    // unconditional (not just on failure), so every single chat message
+    // hit it after the aspects feature was added.
+    let western;
+    let chartAspects = [];
+
  // In your Astrology section, after getting western chart data:
 try {
   const formDataForAstro = {
@@ -1032,8 +1040,7 @@ try {
     birthTime,
     birthPlace,
   };
-  
-  let western;
+
   try {
     western = await getWesternChartDataFromAstrologyAPI(formDataForAstro, coords);
     console.log(`[Astrology] Birth chart sourced from AstrologyAPI`);
@@ -1042,7 +1049,7 @@ try {
     western = await getWesternChartData(formDataForAstro, coords);
   }
   roxyApiWorking = western.apiStatus.roxyApiWorking;
-  const chartAspects = calculateAspects(western.planets);
+  chartAspects = calculateAspects(western.planets);
 
   // Leftover debug override removed here: this used to silently force Sun
   // into house 8 and Moon into house 11 whenever the name was "Amos" with
@@ -1197,7 +1204,7 @@ Als de gebruiker specifiek naar een teken/huis/planeet/aspect vraagt, gebruik da
     aiText = addContextualEmojis(aiText, type);
     
     const sources = [
-      western.apiStatus?.source === "AstrologyAPI" ? "AstrologyAPI (birth chart + aspects)" : "RoxyAPI (birth-chart fallback)",
+      western?.apiStatus?.source === "AstrologyAPI" ? "AstrologyAPI (birth chart + aspects)" : "RoxyAPI (birth-chart fallback)",
       astrologyData.transits ? "transits (fallback)" : null,
       userHumanDesign?.status === "success" ? "AstrologyAPI (Human Design)" : null,
       "GPT-4",
