@@ -788,10 +788,17 @@ const checkChatAvailability = async (userId, psychicId) => {
 };
 
 const chatWithPsychic = async (req, res) => {
+  // Declared here (outside the try) so it's still in scope inside the
+  // catch block below. It used to be declared with const inside the try,
+  // which is block-scoped -- so any error at all inside the try caused the
+  // catch handler itself to throw a *second*, unrelated
+  // "ReferenceError: message is not defined" trying to read it, and that
+  // masking error (not the real one) is what got shown to the user as a
+  // chat message.
+  const { message } = req.body;
   try {
     const userId = req.user._id;
     const psychicId = req.params.psychicId;
-    const { message } = req.body;
     const emojiData = processEmojis(message);
     const emojiContext = emojiData.length > 0
       ? `User included emojis: ${emojiData.map(e => `${e.emoji} (${e.meaning})`).join(", ")}.`
