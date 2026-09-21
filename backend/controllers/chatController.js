@@ -66,6 +66,9 @@ async function getIANATimezone(lat, lon, dateStr) {
 }
 
 // ✅ UPDATED: Enhanced Human Design API function with better error handling
+// Human Design, via AstrologyAPI's Core Bodygraph endpoint (same account/
+// credentials as everything else — no separate geocode key needed, unlike
+// the old humandesignapi.nl integration this replaces).
 async function fetchHumanDesignData(birthDate, birthTime, birthPlace, userId = null) {
   if (!birthDate || !birthTime || !birthPlace) {
     console.warn(`[HumanDesign] Missing required data for user ${userId}`);
@@ -86,78 +89,48 @@ async function fetchHumanDesignData(birthDate, birthTime, birthPlace, userId = n
     if (isNaN(date.getTime())) {
       throw new Error(`Invalid birth date: ${birthDate}`);
     }
-    
-    const day = String(date.getDate()).padStart(2, '0');
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = monthNames[date.getMonth()];
-    const year = String(date.getFullYear()).slice(-2);
-    const formattedDate = `${day}-${month}-${year}`;
-    
-    console.log(`[HumanDesign] Processing for user ${userId}: ${formattedDate} ${birthTime} - ${birthPlace}`);
 
-    if (!process.env.HUMAN_DESIGN_API_KEY) {
-      throw new Error("Human Design API key not configured");
+    const [hourStr, minStr] = birthTime.replace(/[^0-9:]/g, '').split(':');
+    const hour = parseInt(hourStr, 10) || 0;
+    const min = parseInt(minStr, 10) || 0;
+
+    console.log(`[HumanDesign] Processing for user ${userId}: ${birthDate} ${birthTime} - ${birthPlace}`);
+
+    const coords = await getCoordinatesFromCity(birthPlace);
+    if (!coords?.latitude || !coords?.longitude) {
+      throw new Error(`Could not geocode birth place: ${birthPlace}`);
     }
 
-    if (!process.env.GEO_API_KEY) {
-      console.warn(`[HumanDesign] WARNING: GEO_API_KEY not found. Human Design API will attempt geocoding with its own service.`);
+    let tzone = 0;
+    try {
+      const tzRes = await axios.post(
+        "https://json.astrologyapi.com/v1/timezone_with_dst",
+        { latitude: coords.latitude, longitude: coords.longitude, date: date.toISOString().split("T")[0] },
+        { auth: astrologyApiAuth }
+      );
+      tzone = tzRes.data?.timezone ?? 0;
+    } catch (tzError) {
+      console.warn(`[HumanDesign] Timezone lookup failed, defaulting to 0: ${tzError.message}`);
     }
-
-    const cleanBirthTime = birthTime.replace(/[^0-9:]/g, '');
 
     const requestPayload = {
-      birthdate: formattedDate,
-      birthtime: cleanBirthTime,
-      location: birthPlace.trim(),
+      day: date.getDate(),
+      month: date.getMonth() + 1,
+      year: date.getFullYear(),
+      hour,
+      min,
+      lat: parseFloat(coords.latitude),
+      lon: parseFloat(coords.longitude),
+      tzone: Number(tzone),
     };
 
-    console.log(`[HumanDesign] API Payload:`, JSON.stringify(requestPayload, null, 2));
+    console.log(`[HumanDesign] AstrologyAPI payload:`, requestPayload);
 
     const response = await axios.post(
-      'https://api.humandesignapi.nl/v1/bodygraphs',
+      'https://json.astrologyapi.com/v1/human-design',
       requestPayload,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'HD-Api-Key': process.env.HUMAN_DESIGN_API_KEY.trim(),
-          ...(process.env.GEO_API_KEY ? { 'HD-Geocode-Key': process.env.GEO_API_KEY.trim() } : {}),
-          'Accept': 'application/json'
-        },
-        timeout: 30000,
-        validateStatus: function (status) {
-          return status < 500;
-        }
-      }
+      { auth: astrologyApiAuth, timeout: 30000 }
     );
-
-    console.log(`[HumanDesign] API Response Status: ${response.status}`);
-    console.log(`[HumanDesign] API Response Data:`, JSON.stringify(response.data, null, 2));
-
-    if (response.status !== 200) {
-      if (response.status === 400 && response.data?.message?.includes('Geocode Key')) {
-        console.log(`[HumanDesign] Geocode key error detected, trying without geocode key...`);
-        
-        const retryResponse = await axios.post(
-          'https://api.humandesignapi.nl/v1/bodygraphs',
-          requestPayload,
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'HD-Api-Key': process.env.HUMAN_DESIGN_API_KEY.trim(),
-              'Accept': 'application/json'
-            },
-            timeout: 30000
-          }
-        );
-
-        if (retryResponse.status === 200) {
-          console.log(`[HumanDesign] SUCCESS without geocode key`);
-          return processHumanDesignResponse(retryResponse.data, userId);
-        }
-      }
-      
-      throw new Error(`API returned status ${response.status}: ${JSON.stringify(response.data || {})}`);
-    }
 
     return processHumanDesignResponse(response.data, userId);
 
@@ -168,24 +141,16 @@ async function fetchHumanDesignData(birthDate, birthTime, birthPlace, userId = n
       birthTime,
       birthPlace,
       status: err.response?.status,
-      statusText: err.response?.statusText,
       data: err.response?.data,
-      stack: err.stack
     });
 
     let errorMessage = "Unable to generate Human Design chart";
     if (err.response?.status === 401) {
       errorMessage = "Human Design API authentication failed - check API key";
     } else if (err.response?.status === 400) {
-      if (err.message.includes('Geocode Key')) {
-        errorMessage = "Location geocoding failed. Please check the city/country spelling or try a nearby major city.";
-      } else {
-        errorMessage = "Invalid birth data format for Human Design calculation";
-      }
+      errorMessage = "Invalid birth data format for Human Design calculation";
     } else if (err.code === 'ECONNABORTED') {
       errorMessage = "Human Design API timeout - please try again";
-    } else if (err.message.includes('ENOTFOUND')) {
-      errorMessage = "Human Design API service temporarily unavailable";
     }
 
     return {
@@ -202,19 +167,40 @@ async function fetchHumanDesignData(birthDate, birthTime, birthPlace, userId = n
   }
 }
 
-// ✅ NEW: Helper function to process Human Design response
+// Maps AstrologyAPI's Core Bodygraph response into the shape the rest of
+// this file (getHumanDesignDetails, the prompt builder) expects.
 function processHumanDesignResponse(responseData, userId) {
+  const natal = responseData?.natal || {};
+
+  const definedCenters = (responseData?.centers || [])
+    .filter((c) => c.natal === "defined")
+    .map((c) => c.name);
+  const undefinedCenters = (responseData?.centers || [])
+    .filter((c) => c.natal !== "defined")
+    .map((c) => c.name);
+  const activeGates = (responseData?.gates || [])
+    .filter((g) => g.natal === "active")
+    .map((g) => g.id);
+  const activeChannels = (responseData?.channels || [])
+    .filter((c) => c.natal === "active")
+    .map((c) => c.id);
+
   const humanDesignData = {
-    type: responseData.type || responseData.hd_type || "Unknown",
-    authority: responseData.authority || responseData.inner_authority || "Unknown",
-    profile: responseData.profile || responseData.profile_line || "Unknown",
-    centers: responseData.centers || {},
-    gates: responseData.gates || [],
-    channels: responseData.channels || [],
-    incarnationCross: responseData.incarnationCross || responseData.cross || "Unknown",
-    strategy: responseData.strategy || "Follow Your Authority",
-    definedCenters: responseData.defined_centers || [],
-    undefinedCenters: responseData.undefined_centers || [],
+    type: natal.type?.label || "Unknown",
+    authority: natal.authority?.label || "Unknown",
+    profile: natal.profile?.code || "Unknown",
+    definition: natal.definition?.label || "Unknown",
+    strategy: natal.strategy?.label || "Follow Your Authority",
+    signature: natal.signature?.label || "Unknown",
+    notSelfTheme: natal.not_self_theme?.label || "Unknown",
+    incarnationCross: natal.incarnation_cross?.label || "Unknown",
+    centers: responseData?.centers || {},
+    definedCenters,
+    undefinedCenters,
+    gates: responseData?.gates || [],
+    activeGates,
+    channels: responseData?.channels || [],
+    activeChannels,
     status: "success",
     apiResponse: responseData
   };
@@ -247,12 +233,19 @@ const getHumanDesignDetails = (hdData, person = "You") => {
       'Reflector': 'Wait a Lunar Cycle'
     }[hdData.type] || 'Follow Your Authority';
     const typeTraits = humanDesignTypeTraits[hdData.type] || 'Ontdek je unieke energie en strategie voor een vervullend leven.';
+    const definedCentersLine = hdData.definedCenters?.length
+      ? hdData.definedCenters.join(', ')
+      : "geen (Reflector-achtige open chart)";
     return `
 ${person} Human Design:
 • Type: ${hdData.type} ${typeEmoji} - ${typeTraits}
 • Authority: ${hdData.authority} (Beslissingsstrategie gebaseerd op je innerlijke wijsheid)
 • Profile: ${hdData.profile} (Je rol en hoe anderen je zien)
 • Strategy: ${strategy} (Hoe je het beste navigeert door het leven)
+• Definition: ${hdData.definition || "Onbekend"} (Hoe je energiecentra intern verbonden zijn)
+• Signature: ${hdData.signature || "Onbekend"} (Hoe het voelt als je in lijn leeft met je type)
+• Not-Self Theme: ${hdData.notSelfTheme || "Onbekend"} (Het signaal dat je uit lijn bent)
+• Gedefinieerde centra: ${definedCentersLine} (je consistente, betrouwbare energie)
 • Incarnation Cross: ${hdData.incarnationCross} (Je levensdoel en thema)
     `.trim();
   }
@@ -291,6 +284,41 @@ async function getUserBirthData(userId) {
     console.error(`[UserData] Error fetching user ${userId}:`, error.message);
     return null;
   }
+}
+
+// Aspects (angular relationships between planets) aren't offered by any
+// AstrologyAPI endpoint we could find, but they're pure geometry, computed
+// from the absolute zodiac degree (fullDegree, 0-360) each planet already
+// comes with. This is what gives the AI the "planetary relationships" it
+// needs to connect placements instead of describing them one at a time.
+const ASPECT_DEFINITIONS = [
+  { name: "Conjunctie", angle: 0, orb: 8 },
+  { name: "Sextiel", angle: 60, orb: 6 },
+  { name: "Vierkant", angle: 90, orb: 8 },
+  { name: "Driehoek", angle: 120, orb: 8 },
+  { name: "Oppositie", angle: 180, orb: 8 },
+];
+
+function calculateAspects(planets) {
+  const aspects = [];
+  const usable = (planets || []).filter((p) => typeof p.fullDegree === "number" && !isNaN(p.fullDegree));
+  for (let i = 0; i < usable.length; i++) {
+    for (let j = i + 1; j < usable.length; j++) {
+      const a = usable[i];
+      const b = usable[j];
+      let diff = Math.abs(a.fullDegree - b.fullDegree) % 360;
+      if (diff > 180) diff = 360 - diff;
+      for (const def of ASPECT_DEFINITIONS) {
+        const orb = Math.abs(diff - def.angle);
+        if (orb <= def.orb) {
+          aspects.push({ planetA: a.name, planetB: b.name, aspect: def.name, orb: Math.round(orb * 10) / 10 });
+          break; // a pair can only have one major aspect
+        }
+      }
+    }
+  }
+  // Tightest orbs first -- these are the strongest, most relevant aspects
+  return aspects.sort((x, y) => x.orb - y.orb);
 }
 
 function getSignFromDate(dateStr) {
@@ -392,7 +420,8 @@ const getWesternChartDataFromAstrologyAPI = async (formData, coords) => {
       sign: p.sign || "Unknown",
       house: p.house != null ? String(p.house) : "N/A",
       degree: p.normDegree ?? p.fullDegree ?? 0,
-      retrograde: p.is_retro === true || p.is_retro === "true",
+      fullDegree: p.fullDegree ?? 0, // absolute 0-360 zodiac position, needed for aspect calculation
+      retrograde: p.isRetro === true || p.isRetro === "true", // AstrologyAPI's field is isRetro, not is_retro
     }));
 
   const sun = findPlanet("sun");
@@ -576,6 +605,7 @@ const getWesternChartData = async (formData, coords) => {
           sign: getFullSignName(chartRes.data[key].sign),
           house: chartRes.data[key].house || "N/A",
           degree: chartRes.data[key].position || 0,
+          fullDegree: chartRes.data[key].position || 0, // RoxyAPI fallback path only; used for aspect calculation
           retrograde: chartRes.data[key].retrograde === true
         });
       }
@@ -1004,19 +1034,17 @@ try {
     western = await getWesternChartData(formDataForAstro, coords);
   }
   roxyApiWorking = western.apiStatus.roxyApiWorking;
-  
-  // ✅ MANUAL OVERRIDE: Based on your correction for Amos
-  // Sun should be in 8th house, Moon in 11th house
+  const chartAspects = calculateAspects(western.planets);
+
+  // Leftover debug override removed here: this used to silently force Sun
+  // into house 8 and Moon into house 11 whenever the name was "Amos" with
+  // birthdate 1986-03-19, overriding whatever the API actually returned --
+  // exactly the account most used for testing, so it was quietly
+  // contaminating the results being checked for accuracy. Chart data now
+  // always reflects what the API returns.
   const manualHouseOverrides = {};
-  
-  // Check if this is Amos Sint with birth date 1986-03-19
-  if ((f.yourName === "Amos Sint" || username === "Amos") && 
-      birthDateStr.includes("1986-03-19")) {
-    console.log(`[Manual Override] Applying house corrections for Amos Sint`);
-    manualHouseOverrides.sun = "8";
-    manualHouseOverrides.moon = "11";
-  }
-  
+
+
   // Only Sun/Moon/Venus/Mars/Ascendant used to make it into the prompt, even
   // though AstrologyAPI returns the full chart (11 planets). The model can't
   // give a deep, specific reading about e.g. career (Saturn/MC), ambition
@@ -1100,10 +1128,15 @@ ${emojiContext}
 
 HOE JE REAGEERT:
 - Bij een pure begroeting of small talk (bijv. alleen "hoi", "hallo", "hoe gaat het") reageer je kort en natuurlijk, zoals een mens — bijvoorbeeld: "Hoi ${f.yourName || username}, welkom! Waar kan ik je vandaag mee helpen?" Dump geen astrologische lezing als iemand alleen gedag zegt.
-- Zodra de gebruiker een echte vraag stelt — over zichzelf, hun karakter, relaties, werk, keuzes, levenspad, of specifiek over een planeet/Human Design — ga dan ECHT diep. Dit is waar je kracht zit.
-- Diep betekent: trek minimaal 2-3 specifieke plaatsingen uit de VOLLEDIGE birth chart hieronder (niet alleen Zon/Maan) samen in je antwoord, en leg uit HOE ze concreet samenspelen in deze specifieke persoon — niet alleen wat elk teken "betekent" in het algemeen. Gebruik de huizen, niet alleen de tekens. Vermijd generieke uitspraken die op iedereen met dat teken zouden passen; maak het herkenbaar specifiek voor déze combinatie van plaatsingen.
-- Richtlijn: bij een serieuze vraag is een antwoord van 3-4 zinnen te kort. Schrijf een echte, meerdere-alinea's-lange duiding zoals een ervaren astroloog die je persoonlijk adviseert — niet een korte samenvatting.
-- Voorbeeld van het diepteniveau dat je moet halen (qua stijl, niet qua inhoud): "Je Mars in [teken] in het [huis]e huis botst interessant met je Saturnus in [teken] — je hebt de drive om actie te ondernemen, maar een innerlijke rem die je dwingt eerst alles te structureren. Dat verklaart waarschijnlijk waarom je in [levensgebied van dat huis] soms lang wikt en weegt voor je springt, terwijl je Zon in [teken] juist verlangt naar erkenning zodra je wél beslist..." — dat niveau van specifieke, verweven interpretatie, niet een opsomming van losse betekenissen.
+- Zodra de gebruiker een echte vraag stelt, denk dan ALTIJD eerst na (stil, voor jezelf, niet hardop) voordat je antwoordt:
+  1. Welke plaatsingen (planeten, tekens, huizen) zijn relevant voor deze vraag?
+  2. Welke aspecten (hoekrelaties) verbinden die plaatsingen met elkaar, of met andere belangrijke punten in de chart?
+  3. Waar zit spanning, tegenstelling of paradox tussen plaatsingen (bijv. een planeet die iets wil, en een andere die het tegenwerkt of complexer maakt)? Waar zit juist versterking (meerdere plaatsingen die in dezelfde richting wijzen)?
+  4. Wat is de psychologische kern hierachter — niet "wat betekent dit teken", maar "wat doet DEZE combinatie met deze persoon"?
+  Schrijf pas daarna je antwoord — een coherente duiding die uit die analyse voortkomt, niet een losse opsomming van betekenissen.
+- Diep betekent: verbind minimaal 2-3 specifieke plaatsingen (met hun huizen) MET ELKAAR via de aspecten hieronder waar mogelijk, en leg uit hoe ze elkaar versterken, tegenspreken of compliceren in deze specifieke persoon. Vermijd generieke uitspraken die op iedereen met dat teken zouden passen — benoem juist de spanning of samenhang die deze chart uniek maakt.
+- Richtlijn: bij een serieuze vraag is een antwoord van 3-4 zinnen te kort. Schrijf een echte, meerdere-alinea's-lange duiding zoals een ervaren astroloog die je persoonlijk adviseert.
+- Voorbeeld van het diepteniveau dat je moet halen (qua stijl, niet qua inhoud): "Je Mars in [teken] in het [huis]e huis vormt een vierkant met je Saturnus in [teken] — je hebt de drive om actie te ondernemen, maar een innerlijke rem die je dwingt eerst alles te structureren, en die twee botsen letterlijk. Dat verklaart waarschijnlijk waarom je in [levensgebied van dat huis] soms lang wikt en weegt voor je springt. Interessant is dat je Zon tegelijk een driehoek maakt met diezelfde Saturnus — die discipline voedt eigenlijk ook je zelfvertrouwen zodra je wél beslist, ook al voelt het onderweg als een rem..." — dat niveau van verweven, soms tegenstrijdige interpretatie, niet een opsomming van losse betekenissen.
 - Bouw voort op het eerdere gesprek hieronder — verwijs terug naar wat er al besproken is in plaats van elke keer bij nul te beginnen.
 - Vraag gerust door zoals een echte coach, maar laat dat de diepgang niet vervangen wanneer er al genoeg gevraagd is om een goed antwoord te geven.
 
@@ -1128,9 +1161,14 @@ VOLLEDIGE BIRTH CHART EN GEBOORTEGEGEVENS (gebruik dit zodra het relevant is voo
 - Pluto: ${astrologyData.planetaryData.user.pluto.sign} (Huis ${astrologyData.planetaryData.user.pluto.house}) 🦂 — transformatie, macht, diepgaande verandering
 - Ascendant: ${astrologyData.planetaryData.user.ascendant.sign} (Huis 1) ⬆ — hoe je overkomt, je masker naar buiten
 
+• Aspecten (hoekrelaties tussen planeten — dit is waar de écht diepe, verweven duidingen vandaan komen):
+${chartAspects.length > 0
+  ? chartAspects.slice(0, 12).map((a) => `- ${a.planetA} ${a.aspect} ${a.planetB} (orb ${a.orb}°)`).join("\n")
+  : "- Geen sterke aspecten binnen de gangbare orb gevonden voor deze chart."}
+
 🔮 ${humanDesignDetails || "Human Design: Vereist exacte geboortetijd, -datum en -plaats voor berekening. 🌍⏰📅"}
 
-Als de gebruiker specifiek naar een teken/huis/planeet vraagt, gebruik dan de exacte waarden hierboven — verzin nooit andere waarden of laat planeten weg omdat ze niet expliciet genoemd zijn. Weef Human Design er natuurlijk in als het beschikbaar en relevant is.
+Als de gebruiker specifiek naar een teken/huis/planeet/aspect vraagt, gebruik dan de exacte waarden hierboven — verzin nooit andere waarden of laat data weg omdat ze niet expliciet genoemd zijn. Weef Human Design er natuurlijk in als het beschikbaar en relevant is — bijvoorbeeld: sluit een gedefinieerd centrum aan bij, of juist contrasteert het met, wat de planeten/aspecten hierboven al laten zien?
 `.trim();
 
     const messagesForAI = [
@@ -1151,9 +1189,9 @@ Als de gebruiker specifiek naar een teken/huis/planeet vraagt, gebruik dan de ex
     aiText = addContextualEmojis(aiText, type);
     
     const sources = [
-      "RoxyAPI (birth-chart + personality)",
+      western.apiStatus?.source === "AstrologyAPI" ? "AstrologyAPI (birth chart + aspects)" : "RoxyAPI (birth-chart fallback)",
       astrologyData.transits ? "transits (fallback)" : null,
-      userHumanDesign?.status === "success" ? "HumanDesignAPI" : null,
+      userHumanDesign?.status === "success" ? "AstrologyAPI (Human Design)" : null,
       "GPT-4",
     ].filter(Boolean).join(" + ");
     
@@ -1445,4 +1483,5 @@ module.exports = {
   // the full HTTP/chat pipeline.
   getWesternChartDataFromAstrologyAPI,
   fetchHumanDesignData,
+  calculateAspects,
 };
