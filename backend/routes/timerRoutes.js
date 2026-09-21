@@ -7,6 +7,7 @@ const Wallet = require("../models/Wallet");
 const User = require("../models/User");
 const AiPsychic = require("../models/aiPsychic");
 const mongoose = require("mongoose");
+const { acquireWalletLock } = require("../utils/walletLock");
 
 const freeMinutes = 1;
 
@@ -174,21 +175,9 @@ router.post("/start-paid-session/:psychicId", protect, checkAndUpdateTimer, asyn
 
     const isAiPsychic = await AiPsychic.exists({ _id: psychicId });
 
-    // Lock wallet to prevent concurrent updates with retry
-    let wallet;
-    let attempts = 0;
+    // Lock wallet, self-healing a stale lock instead of failing forever
+    const wallet = await acquireWalletLock(userId);
     const maxAttempts = 5;
-    while (!wallet && attempts < maxAttempts) {
-      wallet = await Wallet.findOneAndUpdate(
-        { userId, lock: false },
-        { $set: { lock: true } },
-        { new: true }
-      );
-      if (!wallet) {
-        attempts++;
-        await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms before retry
-      }
-    }
 
     if (!wallet) {
       return res.status(400).json({ error: "Wallet locked or not found after retries" });
@@ -370,21 +359,9 @@ router.post("/stop-session/:psychicId", protect, async (req, res) => {
       return res.status(400).json({ error: "Invalid user or psychic ID" });
     }
 
-    // Lock wallet with retry
-    let wallet;
-    let attempts = 0;
+    // Lock wallet, self-healing a stale lock instead of failing forever
+    const wallet = await acquireWalletLock(userId);
     const maxAttempts = 5;
-    while (!wallet && attempts < maxAttempts) {
-      wallet = await Wallet.findOneAndUpdate(
-        { userId, lock: false },
-        { $set: { lock: true } },
-        { new: true }
-      );
-      if (!wallet) {
-        attempts++;
-        await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms before retry
-      }
-    }
 
     if (!wallet) {
       return res.status(400).json({ error: "Wallet locked or not found after retries" });
@@ -393,7 +370,7 @@ router.post("/stop-session/:psychicId", protect, async (req, res) => {
     try {
       // Lock session with retry
       let currentSession;
-      attempts = 0;
+      let attempts = 0;
       while (!currentSession && attempts < maxAttempts) {
         currentSession = await ActiveSession.findOneAndUpdate(
           { userId, psychicId, lock: false, paidSession: true, isArchived: false },

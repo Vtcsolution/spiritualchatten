@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const ActiveSession = require("../models/ActiveSession");
 const Wallet = require("../models/Wallet");
 const AiPsychic = require("../models/aiPsychic");
+const { acquireWalletLock } = require("../utils/walletLock");
 
 const checkAndUpdateTimer = async (req, res, next) => {
   const { psychicId } = req.params;
@@ -13,12 +14,11 @@ const checkAndUpdateTimer = async (req, res, next) => {
       return res.status(400).json({ error: "Invalid user or psychic ID" });
     }
 
-    // Lock wallet to prevent concurrent updates
-    let wallet = await Wallet.findOneAndUpdate(
-      { userId, lock: false },
-      { $set: { lock: true } },
-      { new: true }
-    );
+    // This middleware runs on every session-status poll (every 5s while a
+    // chat is open), so a single-attempt lock check used to fail the whole
+    // poll on any brief overlap with another request touching the same
+    // wallet. Retry briefly, and self-heal a stale lock, instead.
+    let wallet = await acquireWalletLock(userId);
 
     if (!wallet) {
       return res.status(400).json({ error: "Wallet locked or not found" });

@@ -443,6 +443,7 @@ const getWesternChartDataFromAstrologyAPI = async (formData, coords) => {
     houses: {},
     ianaTz: 'UTC',
     rawChartResponse: { planets: planetData, ascendant: ascendantData },
+    natalPayload: payload, // day/month/year/hour/min/lat/lon/tzone, reused for transit lookups
     apiStatus: {
       chartSuccess: planetData.length > 0,
       roxyApiWorking: false,
@@ -721,17 +722,60 @@ function calculateHouseNumber(planetDegree, houseCusps) {
   console.log(`[House Calculation] Could not determine house for degree ${normalizedDegree}`);
   return "N/A";
 }
-// ✅ UPDATED: Simplified Transit Data (RoxyAPI does not support transits; fallback to empty)
-const getTransitData = async (coords, userIanaTz, ascendantDegree, natalPayload) => {
-  console.warn('[Transit Data] RoxyAPI does not support transits; returning empty data');
+// Real current transits (transit planets aspecting the natal chart right
+// now), from AstrologyAPI's natal_transits/daily endpoint. Confirmed working
+// with the same day/month/year/hour/min/lat/lon/tzone payload already used
+// for planets/tropical -- see getWesternChartDataFromAstrologyAPI.
+const getTransitData = async (natalPayload) => {
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0];
-  return {
-    transits: [],
-    currentDate: dateStr,
-    currentYear: now.getFullYear(),
-    error: "Transits not available via current API"
-  };
+
+  if (!natalPayload) {
+    return {
+      transits: [],
+      currentDate: dateStr,
+      currentYear: now.getFullYear(),
+      error: "No natal data available for transit lookup",
+    };
+  }
+
+  try {
+    const res = await axios.post(
+      "https://json.astrologyapi.com/v1/natal_transits/daily",
+      natalPayload,
+      { auth: astrologyApiAuth, timeout: 15000 }
+    );
+
+    const relations = Array.isArray(res.data?.transit_relation) ? res.data.transit_relation : [];
+
+    const transits = relations.map((t) => ({
+      transitPlanet: t.transit_planet,
+      natalPlanet: t.natal_planet,
+      aspect: t.aspect_type,
+      transitSign: t.transit_sign,
+      natalHouse: t.natal_house,
+      retrograde: t.is_retrograde === true,
+      exactTime: t.exact_time,
+    }));
+
+    console.log(`[Transit Data] Fetched ${transits.length} active transit-to-natal aspects`);
+
+    return {
+      transits,
+      ascendant: res.data?.ascendant || null,
+      currentDate: dateStr,
+      currentYear: now.getFullYear(),
+      error: null,
+    };
+  } catch (err) {
+    console.warn(`[Transit Data] AstrologyAPI transit lookup failed: ${err.message}`);
+    return {
+      transits: [],
+      currentDate: dateStr,
+      currentYear: now.getFullYear(),
+      error: "Transits not available right now",
+    };
+  }
 };
 
 // ✅ NEW: RoxyAPI Personality/Life Forecast helper (Fixed to POST + Body, added lat/lon)
@@ -1051,6 +1095,14 @@ try {
   roxyApiWorking = western.apiStatus.roxyApiWorking;
   chartAspects = calculateAspects(western.planets);
 
+  // Current transits (transit planets hitting the natal chart right now) --
+  // only available when the chart itself came from AstrologyAPI, since the
+  // RoxyAPI fallback path doesn't produce the day/month/year/lat/lon/tzone
+  // payload the transit endpoint needs.
+  if (western.natalPayload) {
+    astrologyData.transits = await getTransitData(western.natalPayload);
+  }
+
   // Leftover debug override removed here: this used to silently force Sun
   // into house 8 and Moon into house 11 whenever the name was "Amos" with
   // birthdate 1986-03-19, overriding whatever the API actually returned --
@@ -1119,9 +1171,15 @@ try {
      .map(([planet, data]) => `- ${planet.charAt(0).toUpperCase() + planet.slice(1)}: ${data.sign} (Huis ${data.house})`)
   .join("\n");
     
-    const transitDetails = astrologyData.transits
-      ? astrologyData.transits.transits.map((t) => `- ${t.name}: ${t.sign} (Huis ${t.house})`).join("\n")
-      : "Geen transietdata beschikbaar.";
+    const transitDetails = astrologyData.transits?.transits?.length
+      ? astrologyData.transits.transits
+          .map((t) => {
+            const retro = t.retrograde ? " (retrograde)" : "";
+            const exact = t.exactTime ? `, exact op ${new Date(t.exactTime).toLocaleDateString("nl-NL")}` : "";
+            return `- Transiterende ${t.transitPlanet} in ${t.transitSign}${retro} vormt een ${t.aspect} met jouw natale ${t.natalPlanet} (Huis ${t.natalHouse})${exact}`;
+          })
+          .join("\n")
+      : "Geen actuele transietdata beschikbaar.";
     
     const lifeForecastDetails = astrologyData.lifeForecast?.report
       ? `Belangrijke Levensvoorspelling: ${astrologyData.lifeForecast.report.substring(0, 200)}...`
@@ -1183,7 +1241,10 @@ ${chartAspects.length > 0
 
 🔮 ${humanDesignDetails || "Human Design: Vereist exacte geboortetijd, -datum en -plaats voor berekening. 🌍⏰📅"}
 
-Als de gebruiker specifiek naar een teken/huis/planeet/aspect vraagt, gebruik dan de exacte waarden hierboven — verzin nooit andere waarden of laat data weg omdat ze niet expliciet genoemd zijn. Weef Human Design er natuurlijk in als het beschikbaar en relevant is — bijvoorbeeld: sluit een gedefinieerd centrum aan bij, of juist contrasteert het met, wat de planeten/aspecten hierboven al laten zien?
+• Actuele Transits (huidige planeetbewegingen die op dit moment een hoekrelatie vormen met de natale chart — gebruik dit voor voorspellingen, timing-vragen, of "wat gebeurt er nu/binnenkort" vragen):
+${transitDetails}
+
+Als de gebruiker specifiek naar een teken/huis/planeet/aspect vraagt, gebruik dan de exacte waarden hierboven — verzin nooit andere waarden of laat data weg omdat ze niet expliciet genoemd zijn. Weef Human Design er natuurlijk in als het beschikbaar en relevant is — bijvoorbeeld: sluit een gedefinieerd centrum aan bij, of juist contrasteert het met, wat de planeten/aspecten hierboven al laten zien? Gebruik de actuele transits specifiek wanneer de gebruiker vraagt naar timing, "wanneer", toekomstige gebeurtenissen, of hoe het nu met hen gaat — verbind een transit expliciet met de bijbehorende natale plaatsing.
 `.trim();
 
     const messagesForAI = [
@@ -1205,7 +1266,7 @@ Als de gebruiker specifiek naar een teken/huis/planeet/aspect vraagt, gebruik da
     
     const sources = [
       western?.apiStatus?.source === "AstrologyAPI" ? "AstrologyAPI (birth chart + aspects)" : "RoxyAPI (birth-chart fallback)",
-      astrologyData.transits ? "transits (fallback)" : null,
+      astrologyData.transits?.transits?.length ? "AstrologyAPI (actuele transits)" : null,
       userHumanDesign?.status === "success" ? "AstrologyAPI (Human Design)" : null,
       "GPT-4",
     ].filter(Boolean).join(" + ");
@@ -1499,4 +1560,5 @@ module.exports = {
   getWesternChartDataFromAstrologyAPI,
   fetchHumanDesignData,
   calculateAspects,
+  getTransitData,
 };
