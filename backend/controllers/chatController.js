@@ -1017,23 +1017,36 @@ try {
     manualHouseOverrides.moon = "11";
   }
   
+  // Only Sun/Moon/Venus/Mars/Ascendant used to make it into the prompt, even
+  // though AstrologyAPI returns the full chart (11 planets). The model can't
+  // give a deep, specific reading about e.g. career (Saturn/MC), ambition
+  // (Mars/Jupiter), or transformation (Pluto) if it never sees them — this
+  // was a real, concrete cause of "generic" answers. Include everything we
+  // actually fetched.
+  const findPlanet = (name) => western.planets?.find((p) => p.name === name);
   astrologyData.planetaryData.user = {
-    sun: { 
-      sign: western.sunSign, 
-      house: manualHouseOverrides.sun || western.explicitHouses?.sun || western.planets?.find((p) => p.name === "Sun")?.house || "N/A" 
+    sun: {
+      sign: western.sunSign,
+      house: manualHouseOverrides.sun || western.explicitHouses?.sun || findPlanet("Sun")?.house || "N/A"
     },
-    moon: { 
-      sign: western.moonSign, 
-      house: manualHouseOverrides.moon || western.explicitHouses?.moon || western.planets?.find((p) => p.name === "Moon")?.house || "N/A" 
+    moon: {
+      sign: western.moonSign,
+      house: manualHouseOverrides.moon || western.explicitHouses?.moon || findPlanet("Moon")?.house || "N/A"
     },
-    venus: { 
-      sign: western.planets?.find((p) => p.name === "Venus")?.sign || "Unknown", 
-      house: western.explicitHouses?.venus || western.planets?.find((p) => p.name === "Venus")?.house || "N/A" 
+    mercury: { sign: findPlanet("Mercury")?.sign || "Unknown", house: findPlanet("Mercury")?.house || "N/A" },
+    venus: {
+      sign: findPlanet("Venus")?.sign || "Unknown",
+      house: western.explicitHouses?.venus || findPlanet("Venus")?.house || "N/A"
     },
-    mars: { 
-      sign: western.planets?.find((p) => p.name === "Mars")?.sign || "Unknown", 
-      house: western.explicitHouses?.mars || western.planets?.find((p) => p.name === "Mars")?.house || "N/A" 
+    mars: {
+      sign: findPlanet("Mars")?.sign || "Unknown",
+      house: western.explicitHouses?.mars || findPlanet("Mars")?.house || "N/A"
     },
+    jupiter: { sign: findPlanet("Jupiter")?.sign || "Unknown", house: findPlanet("Jupiter")?.house || "N/A" },
+    saturn: { sign: findPlanet("Saturn")?.sign || "Unknown", house: findPlanet("Saturn")?.house || "N/A" },
+    uranus: { sign: findPlanet("Uranus")?.sign || "Unknown", house: findPlanet("Uranus")?.house || "N/A" },
+    neptune: { sign: findPlanet("Neptune")?.sign || "Unknown", house: findPlanet("Neptune")?.house || "N/A" },
+    pluto: { sign: findPlanet("Pluto")?.sign || "Unknown", house: findPlanet("Pluto")?.house || "N/A" },
     ascendant: { sign: western.ascendant, house: 1 },
   };
   
@@ -1087,28 +1100,37 @@ ${emojiContext}
 
 HOE JE REAGEERT:
 - Bij een pure begroeting of small talk (bijv. alleen "hoi", "hallo", "hoe gaat het") reageer je kort en natuurlijk, zoals een mens — bijvoorbeeld: "Hoi ${f.yourName || username}, welkom! Waar kan ik je vandaag mee helpen?" Dump geen astrologische lezing als iemand alleen gedag zegt.
-- Zodra de gebruiker een echte vraag stelt — over zichzelf, hun karakter, relaties, keuzes, levenspad, of specifiek over hun ascendant/zon/maan/Human Design — ga dan diep. Dit is waar je kracht zit: geef een rijke, gelaagde, inzichtelijke duiding die de planetaire posities, huizen én Human Design met elkaar verweeft tot een samenhangend, persoonlijk verhaal. Wees specifiek en concreet, niet generiek — vermijd oppervlakkige one-liners bij een serieuze vraag. Meerdere alinea's zijn prima wanneer de vraag daarom vraagt.
+- Zodra de gebruiker een echte vraag stelt — over zichzelf, hun karakter, relaties, werk, keuzes, levenspad, of specifiek over een planeet/Human Design — ga dan ECHT diep. Dit is waar je kracht zit.
+- Diep betekent: trek minimaal 2-3 specifieke plaatsingen uit de VOLLEDIGE birth chart hieronder (niet alleen Zon/Maan) samen in je antwoord, en leg uit HOE ze concreet samenspelen in deze specifieke persoon — niet alleen wat elk teken "betekent" in het algemeen. Gebruik de huizen, niet alleen de tekens. Vermijd generieke uitspraken die op iedereen met dat teken zouden passen; maak het herkenbaar specifiek voor déze combinatie van plaatsingen.
+- Richtlijn: bij een serieuze vraag is een antwoord van 3-4 zinnen te kort. Schrijf een echte, meerdere-alinea's-lange duiding zoals een ervaren astroloog die je persoonlijk adviseert — niet een korte samenvatting.
+- Voorbeeld van het diepteniveau dat je moet halen (qua stijl, niet qua inhoud): "Je Mars in [teken] in het [huis]e huis botst interessant met je Saturnus in [teken] — je hebt de drive om actie te ondernemen, maar een innerlijke rem die je dwingt eerst alles te structureren. Dat verklaart waarschijnlijk waarom je in [levensgebied van dat huis] soms lang wikt en weegt voor je springt, terwijl je Zon in [teken] juist verlangt naar erkenning zodra je wél beslist..." — dat niveau van specifieke, verweven interpretatie, niet een opsomming van losse betekenissen.
 - Bouw voort op het eerdere gesprek hieronder — verwijs terug naar wat er al besproken is in plaats van elke keer bij nul te beginnen.
 - Vraag gerust door zoals een echte coach, maar laat dat de diepgang niet vervangen wanneer er al genoeg gevraagd is om een goed antwoord te geven.
 
 De vraag/het bericht van de gebruiker: "${message}"
 
-GEBOORTEGEGEVENS EN ASTROLOGISCHE DATA (gebruik dit zodra het relevant is voor de vraag — dit is je bron voor diepgang, niet iets om te vermijden):
+VOLLEDIGE BIRTH CHART EN GEBOORTEGEGEVENS (gebruik dit zodra het relevant is voor de vraag — dit is je bron voor diepgang, niet iets om te vermijden of maar half te gebruiken):
 • Naam: ${f.yourName || username}
 • Geboortedatum: ${birthDateStr} 📅
 • Geboortetijd: ${birthTime || "Niet gespecificeerd"} ⏰
 • Geboorteplaats: ${birthPlace || "Niet opgegeven"} 🌍
 
-• Planetaire Posities:
-- Zon: ${astrologyData.planetaryData.user.sun.sign} (Huis ${astrologyData.planetaryData.user.sun.house}) ☀️
-- Maan: ${astrologyData.planetaryData.user.moon.sign} (Huis ${astrologyData.planetaryData.user.moon.house}) 🌙
-- Venus: ${astrologyData.planetaryData.user.venus.sign} (Huis ${astrologyData.planetaryData.user.venus.house}) 💖
-- Mars: ${astrologyData.planetaryData.user.mars.sign} (Huis ${astrologyData.planetaryData.user.mars.house}) 🔥
-- Ascendant: ${astrologyData.planetaryData.user.ascendant.sign} (Huis 1) ⬆
+• Planetaire Posities (teken + huis):
+- Zon: ${astrologyData.planetaryData.user.sun.sign} (Huis ${astrologyData.planetaryData.user.sun.house}) ☀️ — kernidentiteit, levensdoel
+- Maan: ${astrologyData.planetaryData.user.moon.sign} (Huis ${astrologyData.planetaryData.user.moon.house}) 🌙 — emoties, innerlijke behoeften
+- Mercurius: ${astrologyData.planetaryData.user.mercury.sign} (Huis ${astrologyData.planetaryData.user.mercury.house}) 💬 — denken, communicatie
+- Venus: ${astrologyData.planetaryData.user.venus.sign} (Huis ${astrologyData.planetaryData.user.venus.house}) 💖 — liefde, waarden, wat je aantrekt
+- Mars: ${astrologyData.planetaryData.user.mars.sign} (Huis ${astrologyData.planetaryData.user.mars.house}) 🔥 — actie, verlangen, drive
+- Jupiter: ${astrologyData.planetaryData.user.jupiter.sign} (Huis ${astrologyData.planetaryData.user.jupiter.house}) 🌟 — groei, geluk, expansie
+- Saturnus: ${astrologyData.planetaryData.user.saturn.sign} (Huis ${astrologyData.planetaryData.user.saturn.house}) 🪐 — discipline, angst, levenslessen
+- Uranus: ${astrologyData.planetaryData.user.uranus.sign} (Huis ${astrologyData.planetaryData.user.uranus.house}) ⚡ — verandering, vrijheid, originaliteit
+- Neptunus: ${astrologyData.planetaryData.user.neptune.sign} (Huis ${astrologyData.planetaryData.user.neptune.house}) 🌊 — intuïtie, dromen, spiritualiteit
+- Pluto: ${astrologyData.planetaryData.user.pluto.sign} (Huis ${astrologyData.planetaryData.user.pluto.house}) 🦂 — transformatie, macht, diepgaande verandering
+- Ascendant: ${astrologyData.planetaryData.user.ascendant.sign} (Huis 1) ⬆ — hoe je overkomt, je masker naar buiten
 
 🔮 ${humanDesignDetails || "Human Design: Vereist exacte geboortetijd, -datum en -plaats voor berekening. 🌍⏰📅"}
 
-Als de gebruiker specifiek naar hun ascendant, zon of maan vraagt, gebruik dan de exacte tekens/huizen hierboven — verzin nooit andere waarden. Weef Human Design er natuurlijk in als het relevant is.
+Als de gebruiker specifiek naar een teken/huis/planeet vraagt, gebruik dan de exacte waarden hierboven — verzin nooit andere waarden of laat planeten weg omdat ze niet expliciet genoemd zijn. Weef Human Design er natuurlijk in als het beschikbaar en relevant is.
 `.trim();
 
     const messagesForAI = [
