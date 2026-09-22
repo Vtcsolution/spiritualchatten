@@ -722,10 +722,18 @@ function calculateHouseNumber(planetDegree, houseCusps) {
   console.log(`[House Calculation] Could not determine house for degree ${normalizedDegree}`);
   return "N/A";
 }
-// Real current transits (transit planets aspecting the natal chart right
-// now), from AstrologyAPI's natal_transits/daily endpoint. Confirmed working
-// with the same day/month/year/hour/min/lat/lon/tzone payload already used
-// for planets/tropical -- see getWesternChartDataFromAstrologyAPI.
+// Real current transits (transit planets aspecting the natal chart over the
+// current week), from AstrologyAPI's natal_transits/weekly endpoint, using
+// the same day/month/year/hour/min/lat/lon/tzone payload already used for
+// planets/tropical -- see getWesternChartDataFromAstrologyAPI.
+//
+// This was natal_transits/daily originally -- confirmed working when first
+// wired up, but AstrologyAPI's daily endpoint later started hanging
+// (consistently timing out at 25s+) while planets/tropical, tropical_transits
+// and natal_transits/weekly all kept responding in under a second. Weekly
+// gives the same transit-to-natal aspect data (just without transit_sign/
+// natal_house/is_retrograde, which weekly's response doesn't include), so
+// it's used instead purely for reliability.
 const getTransitData = async (natalPayload) => {
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0];
@@ -741,7 +749,7 @@ const getTransitData = async (natalPayload) => {
 
   try {
     const res = await axios.post(
-      "https://json.astrologyapi.com/v1/natal_transits/daily",
+      "https://json.astrologyapi.com/v1/natal_transits/weekly",
       natalPayload,
       { auth: astrologyApiAuth, timeout: 15000 }
     );
@@ -752,17 +760,21 @@ const getTransitData = async (natalPayload) => {
       transitPlanet: t.transit_planet,
       natalPlanet: t.natal_planet,
       aspect: t.aspect_type,
-      transitSign: t.transit_sign,
-      natalHouse: t.natal_house,
+      transitSign: t.transit_sign || null, // not present in the weekly response
+      natalHouse: t.natal_house ?? null,   // not present in the weekly response
       retrograde: t.is_retrograde === true,
-      exactTime: t.exact_time,
+      startTime: t.start_time || null,
+      exactTime: t.exact_time || null,
+      endTime: t.end_time || null,
     }));
 
-    console.log(`[Transit Data] Fetched ${transits.length} active transit-to-natal aspects`);
+    console.log(`[Transit Data] Fetched ${transits.length} active transit-to-natal aspects (weekly)`);
 
     return {
       transits,
-      ascendant: res.data?.ascendant || null,
+      ascendant: res.data?.natal_ascendant || res.data?.ascendant || null,
+      weekStart: res.data?.start_date || null,
+      weekEnd: res.data?.end_date || null,
       currentDate: dateStr,
       currentYear: now.getFullYear(),
       error: null,
@@ -1175,8 +1187,14 @@ try {
       ? astrologyData.transits.transits
           .map((t) => {
             const retro = t.retrograde ? " (retrograde)" : "";
+            const location = t.transitSign
+              ? ` in ${t.transitSign}${retro}${t.natalHouse != null ? ` (Huis ${t.natalHouse})` : ""}`
+              : "";
             const exact = t.exactTime ? `, exact op ${new Date(t.exactTime).toLocaleDateString("nl-NL")}` : "";
-            return `- Transiterende ${t.transitPlanet} in ${t.transitSign}${retro} vormt een ${t.aspect} met jouw natale ${t.natalPlanet} (Huis ${t.natalHouse})${exact}`;
+            const window = t.startTime && t.endTime
+              ? ` (actief van ${new Date(t.startTime).toLocaleDateString("nl-NL")} tot ${new Date(t.endTime).toLocaleDateString("nl-NL")})`
+              : "";
+            return `- Transiterende ${t.transitPlanet}${location} vormt een ${t.aspect} met jouw natale ${t.natalPlanet}${exact}${window}`;
           })
           .join("\n")
       : "Geen actuele transietdata beschikbaar.";
