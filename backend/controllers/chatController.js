@@ -1385,10 +1385,16 @@ const getAllUserChats = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
+    // Sorted by updatedAt (last message), not createdAt (when the thread
+    // was first started) -- a long-running conversation that got new
+    // messages today would otherwise still show its original creation
+    // date from weeks ago and look like old history instead of today's
+    // activity, which is exactly what made today's AI Coach conversations
+    // hard to find in this list.
     const chats = await ChatMessage.find()
       .populate("userId", "username image")
       .populate("psychicId", "name image")
-      .sort({ createdAt: -1 })
+      .sort({ updatedAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -1399,8 +1405,9 @@ const getAllUserChats = async (req, res) => {
       id: chat._id,
       user: chat.userId,
       advisor: chat.psychicId,
-      credits: Math.floor(Math.random() * 200 + 20), // Dummy credits for now
-      createdAt: chat.createdAt
+      messageCount: chat.messages.length,
+      createdAt: chat.createdAt,
+      lastMessageAt: chat.updatedAt,
     }));
 
     res.status(200).json({

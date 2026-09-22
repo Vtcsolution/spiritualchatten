@@ -24,10 +24,12 @@ const UserChats = () => {
 
   const format = (date) => {
     if (!date) return "Not provided";
-    return new Date(date).toLocaleDateString("en-US", {
+    return new Date(date).toLocaleString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
     });
   };
 
@@ -118,8 +120,8 @@ const UserChats = () => {
                     <TableRow>
                       <TableHead>User</TableHead>
                       <TableHead>Advisor</TableHead>
-                      <TableHead>Credits Used</TableHead>
-                      <TableHead>Created At</TableHead>
+                      <TableHead>Messages</TableHead>
+                      <TableHead>Last Message</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -138,8 +140,8 @@ const UserChats = () => {
                         <TableCell>
                           {chat.advisor?.name || "Unknown"}
                         </TableCell>
-                        <TableCell>{chat.credits}</TableCell>
-                        <TableCell>{format(chat.createdAt)}</TableCell>
+                        <TableCell>{chat.messageCount}</TableCell>
+                        <TableCell>{format(chat.lastMessageAt)}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
                             <Link to={`/admin/dashboard/user-chat-detail/${chat.id}`}>
