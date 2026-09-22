@@ -196,7 +196,11 @@ const AllUsers = () => {
       setCreditsToAdd("");
       fetchPsychics(pagination.currentPage, pagination.limit);
     } catch (err) {
-      toast.error("Failed to add credits");
+      // Show the real reason (e.g. "Invalid token" when the admin session
+      // expired) instead of a generic message that gives no hint of what
+      // actually went wrong or what to do about it.
+      const msg = err.response?.data?.message || err.response?.data?.error || "Failed to add credits";
+      toast.error(err.response?.status === 401 ? `${msg} — please log out and log back in` : msg);
     } finally {
       setIsAddingCredits(false);
     }

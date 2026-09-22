@@ -22,15 +22,19 @@ const loginAdmin = async (req, res) => {
       return res.status(400).json({ message: "Invalid password" });
     }
 
+    // A 2h expiry meant any admin panel tab left open longer than that
+    // started silently failing every action (add credits, etc.) with a
+    // generic "Failed to..." toast that gave no hint the session had
+    // expired. Match a normal staff-tool session length instead.
     const token = jwt.sign({ id: admin._id, role: "admin" }, process.env.JWT_SECRET, {
-      expiresIn: "2h",
+      expiresIn: "7d",
     });
 
     res.cookie("admin_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 2 * 60 * 60 * 1000, // 2 hours
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
     res.status(200).json({
