@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Loader2, CheckCircle, Gift, X } from 'lucide-react';
 import { useAuth } from './AuthContext';
@@ -315,9 +316,8 @@ export default function Signup() {
 
             <div className="space-y-2">
               <Label htmlFor="wachtwoord">Wachtwoord</Label>
-              <Input
+              <PasswordInput
                 id="wachtwoord"
-                type="password"
                 value={formData.wachtwoord}
                 onChange={handleChange}
                 placeholder="Maak een wachtwoord (min. 6 tekens)"
@@ -331,9 +331,8 @@ export default function Signup() {
 
             <div className="space-y-2">
               <Label htmlFor="bevestigWachtwoord">Bevestig Wachtwoord</Label>
-              <Input
+              <PasswordInput
                 id="bevestigWachtwoord"
-                type="password"
                 value={formData.bevestigWachtwoord}
                 onChange={handleChange}
                 placeholder="Bevestig uw wachtwoord"

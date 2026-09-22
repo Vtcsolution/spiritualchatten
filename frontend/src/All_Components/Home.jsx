@@ -2,6 +2,7 @@
 import { MessageCircle, Star, Lock, Cpu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -1713,8 +1714,7 @@ const isPsychicAvailable = (psychicId) => {
       <div>
         <Label>Password *</Label>
         <br></br>
-        <Input
-          type="password"
+        <PasswordInput
           name="password"
           value={formData.password}
           onChange={handleInputChange}

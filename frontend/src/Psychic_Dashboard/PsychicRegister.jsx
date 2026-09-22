@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -229,23 +230,21 @@ export default function PsychicRegister() {
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                required 
+              <PasswordInput
+                id="password"
+                required
                 value={formData.password}
-                onChange={handleChange} 
+                onChange={handleChange}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input 
-                id="confirmPassword" 
-                type="password" 
-                required 
+              <PasswordInput
+                id="confirmPassword"
+                required
                 value={formData.confirmPassword}
-                onChange={handleChange} 
+                onChange={handleChange}
               />
             </div>
 
