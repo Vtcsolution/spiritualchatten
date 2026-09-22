@@ -35,9 +35,11 @@ exports.getWalletBalance = async (req, res) => {
 exports.addCredits = async (req, res) => {
   try {
     const { userId, credits, unlockAi } = req.body;
+    console.log(`[addCredits] Request from admin ${req.admin?._id}: userId=${userId}, credits=${credits}, unlockAi=${unlockAi}`);
 
     // Validate input
     if (!userId || !credits || credits <= 0) {
+      console.warn(`[addCredits] Rejected: invalid input (userId=${userId}, credits=${credits})`);
       return res.status(400).json({
         success: false,
         error: "Invalid input: userId and positive credits amount are required",
@@ -46,6 +48,7 @@ exports.addCredits = async (req, res) => {
 
     // Validate userId is a valid ObjectId
     if (!mongoose.Types.ObjectId.isValid(userId)) {
+      console.warn(`[addCredits] Rejected: invalid userId format: ${userId}`);
       return res.status(400).json({
         success: false,
         error: "Invalid user ID format",
@@ -70,6 +73,7 @@ exports.addCredits = async (req, res) => {
       wallet.hasEverPurchased = true;
     }
     await wallet.save();
+    console.log(`[addCredits] Saved: userId=${userId} now has credits=${wallet.credits}, hasEverPurchased=${wallet.hasEverPurchased}`);
 
     // Emit the updated balance to the user's room
     req.io.to(userId).emit("walletUpdate", {
