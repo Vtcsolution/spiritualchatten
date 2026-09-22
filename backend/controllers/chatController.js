@@ -790,28 +790,65 @@ const getTransitData = async (natalPayload) => {
   }
 };
 
-// Draws a real tarot card for the user's question via AstrologyAPI's
-// yes_no_tarot endpoint (confirmed working with existing credentials --
-// no extra params needed beyond `question`). Used by the Tarot AI Coach so
-// its readings are grounded in an actual drawn card, the same way the
-// Astrology coach grounds its replies in a real birth chart.
-const getTarotReading = async (question) => {
-  try {
-    const res = await axios.post(
-      "https://json.astrologyapi.com/v1/yes_no_tarot",
-      { question: question || "What do I need to know right now?" },
-      { auth: astrologyApiAuth, timeout: 15000 }
-    );
-    return {
-      card: res.data?.name || null,
-      verdict: res.data?.value || null, // "Yes" / "No"
-      description: res.data?.description || null,
-      error: null,
-    };
-  } catch (err) {
-    console.warn(`[Tarot] AstrologyAPI card draw failed: ${err.message}`);
-    return { card: null, verdict: null, description: null, error: "Tarot card draw not available right now" };
+// AstrologyAPI's tarot endpoints (yes_no_tarot, tarot_predictions) were
+// tried first, but confirmed broken for this purpose: yes_no_tarot returns
+// "The Magician" on every single call regardless of the question, and
+// tarot_predictions returns byte-for-byte identical text across repeated
+// calls -- neither is actually randomized per request. So card selection
+// is done locally instead, with a real shuffle over the full 78-card deck.
+const TAROT_DECK = [
+  "The Fool", "The Magician", "The High Priestess", "The Empress", "The Emperor",
+  "The Hierophant", "The Lovers", "The Chariot", "Strength", "The Hermit",
+  "Wheel of Fortune", "Justice", "The Hanged Man", "Death", "Temperance",
+  "The Devil", "The Tower", "The Star", "The Moon", "The Sun",
+  "Judgement", "The World",
+  ...["Ace", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Page", "Knight", "Queen", "King"]
+    .flatMap((rank) => ["Wands", "Cups", "Swords", "Pentacles"].map((suit) => `${rank} of ${suit}`)),
+];
+
+// Looks for an explicit card count in the user's message (digits or spelled
+// out, Dutch or English), e.g. "3-kaart lezing", "drie kaarten", "3 card
+// reading". "verleden heden toekomst" / "past present future" implies the
+// classic 3-card spread even without a number. Defaults to 1 for an
+// ordinary question.
+const detectRequestedCardCount = (message) => {
+  const text = (message || "").toLowerCase();
+  const wordToNumber = {
+    een: 1, one: 1, twee: 2, two: 2, drie: 3, three: 3, vier: 4, four: 4,
+    vijf: 5, five: 5, zes: 6, six: 6, zeven: 7, seven: 7, acht: 8, eight: 8,
+    negen: 9, nine: 9, tien: 10, ten: 10,
+  };
+  const digitMatch = text.match(/\b([1-9]|10)\s*[- ]?(kaart|kaarten|card|cards)\b/);
+  if (digitMatch) return parseInt(digitMatch[1], 10);
+
+  const wordMatch = text.match(/\b(een|one|twee|two|drie|three|vier|four|vijf|five|zes|six|zeven|seven|acht|eight|negen|nine|tien|ten)\s*[- ]?(kaart|kaarten|card|cards)\b/);
+  if (wordMatch) return wordToNumber[wordMatch[1]];
+
+  if (/verleden.*heden.*toekomst|past.*present.*future/.test(text)) return 3;
+
+  return 1;
+};
+
+// Draws `count` distinct random cards from the full 78-card deck, each with
+// its own upright/reversed orientation -- a real shuffle, not a single
+// fixed draw, so a multi-card spread never repeats a card and repeated
+// single-card questions don't keep landing on the same one.
+const drawTarotCards = (count = 1) => {
+  const shuffled = [...TAROT_DECK];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
+  return shuffled.slice(0, Math.min(count, TAROT_DECK.length)).map((name) => ({
+    name,
+    reversed: Math.random() < 0.3, // upright more often than not, still a real chance of reversed
+  }));
+};
+
+const getTarotReading = (question) => {
+  const count = detectRequestedCardCount(question);
+  const cards = drawTarotCards(count);
+  return { cards, count, error: null };
 };
 
 // ✅ NEW: RoxyAPI Personality/Life Forecast helper (Fixed to POST + Body, added lat/lon)
@@ -970,12 +1007,16 @@ const chatWithPsychic = async (req, res) => {
     };
 
     if (type === "Tarot") {
-      console.log("[Tarot] Drawing card for:", username);
-      const reading = await getTarotReading(message);
+      const reading = getTarotReading(message);
+      console.log(`[Tarot] Drew ${reading.cards.length} card(s) for ${username}:`, reading.cards.map(c => `${c.name}${c.reversed ? " (reversed)" : ""}`).join(", "));
       const detectedLanguage = detectLanguage(message);
       const languageInstruction = detectedLanguage === "nl"
         ? "ANTWOORD ALTIJD IN HET NEDERLANDS. Gebruik natuurlijk, vloeiend Nederlands met een warme, intuïtieve toon."
         : "ANTWOORD ALTIJD IN HET NEDERLANDS, zelfs als de gebruiker in het Engels of een andere taal vraagt. Gebruik natuurlijk, vloeiend Nederlands met een warme, intuïtieve toon.";
+
+      const cardListText = reading.cards
+        .map((c, i) => `${i + 1}. ${c.name}${c.reversed ? " (omgekeerd)" : " (rechtop)"}`)
+        .join("\n");
 
       const tarotSystemContent = `
 ${languageInstruction}
@@ -984,17 +1025,16 @@ ${emojiContext}
 
 HOE JE REAGEERT:
 - Bij een pure begroeting of small talk (bijv. alleen "hoi", "hallo") reageer je kort en natuurlijk, zoals een mens — bijvoorbeeld: "Hoi ${username}, welkom! Waar wil je vandaag helderheid over?" Trek geen kaart en dump geen lezing als iemand alleen gedag zegt.
-- Zodra de gebruiker een echte vraag stelt, gebruik dan de kaart die voor deze specifieke vraag is getrokken (hieronder) als de kern van je antwoord — verzin nooit een andere kaart of een andere betekenis.
-- Verbind de betekenis van de kaart expliciet met de vraag van de gebruiker — leg uit WAAROM deze kaart relevant is voor precies dit, niet een generieke kaartbeschrijving die op elke vraag zou passen.
+- Zodra de gebruiker een echte vraag stelt, gebruik dan precies de kaart(en) die voor deze specifieke vraag zijn getrokken (hieronder) als de kern van je antwoord — verzin nooit een andere kaart, een andere richting (rechtop/omgekeerd), of extra kaarten die niet getrokken zijn.
+- Bij één kaart: verbind de betekenis expliciet met de vraag van de gebruiker — leg uit WAAROM deze kaart relevant is voor precies dit, niet een generieke kaartbeschrijving die op iedereen zou passen. Een omgekeerde kaart heeft een andere, vaak tegengestelde of vertraagde betekenis dan rechtop — behandel dat verschil serieus.
+- Bij meerdere kaarten: leg elke kaart afzonderlijk kort uit in de context van de vraag, en duid daarna het geheel — hoe de kaarten samen een verhaal vertellen (bijv. bij 3 kaarten: verleden/heden/toekomst of situatie/actie/uitkomst), niet als losse, ongerelateerde uitspraken.
 - Richtlijn: bij een serieuze vraag is een antwoord van 2-3 zinnen te kort. Schrijf een echte, warme duiding zoals een ervaren tarotlezer die persoonlijk met je in gesprek is.
 - Bouw voort op het eerdere gesprek hieronder — verwijs terug naar wat er al besproken is in plaats van elke keer bij nul te beginnen.
 
 De vraag/het bericht van de gebruiker: "${message}"
 
-GETROKKEN KAART (gebruik dit als de kern van je antwoord zodra het relevant is voor de vraag — verzin nooit een andere kaart):
-${reading.card
-  ? `- Kaart: ${reading.card} 🔮\n- Richting: ${reading.verdict || "Niet gespecificeerd"}\n- Betekenis: ${reading.description}`
-  : "Geen kaart beschikbaar op dit moment — reageer warm en intuïtief zonder een specifieke kaart te noemen, en verontschuldig je niet uitgebreid hiervoor."}
+GETROKKEN KAART(EN) (gebruik dit exact als de kern van je antwoord — verzin nooit andere kaarten, een andere richting, of een ander aantal):
+${cardListText}
 `.trim();
 
       const tarotMessagesForAI = [
@@ -1015,7 +1055,7 @@ ${reading.card
       tarotAiText = addContextualEmojis(tarotAiText, type);
 
       const tarotSources = [
-        reading.card ? "AstrologyAPI (tarot card draw)" : null,
+        reading.cards.length ? `Tarot deck draw (${reading.cards.length} card${reading.cards.length > 1 ? "s" : ""})` : null,
         "GPT-4",
       ].filter(Boolean).join(" + ");
 
