@@ -26,6 +26,13 @@ router.get("/session-status/:psychicId", protect, checkAndUpdateTimer, async (re
     const wallet = await Wallet.findOne({ userId });
     const now = new Date();
 
+    // A session left with paidSession still true after being archived
+    // (e.g. reactivated by another code path without resetting isArchived)
+    // must never be reported as live -- its initialCredits/paidStartTime
+    // are a frozen, stale snapshot, and treating it as active is exactly
+    // what caused admin-granted credits to appear to vanish.
+    const sessionIsPaid = !!(session && !session.isArchived && session.paidSession);
+
     // Free minutes/credits are reserved for human coaches — an AI psychic
     // never reports as free, even if a stale free ActiveSession exists from
     // before this restriction was added.
@@ -34,11 +41,11 @@ router.get("/session-status/:psychicId", protect, checkAndUpdateTimer, async (re
       return res.json({
         isFree: false,
         remainingFreeTime: 0,
-        paidTimer: session?.paidSession && session.paidStartTime
+        paidTimer: sessionIsPaid && session.paidStartTime
           ? Math.max(0, session.initialCredits * 60 - Math.floor((now - session.paidStartTime) / 1000))
           : 0,
         credits: wallet?.hasEverPurchased ? (wallet?.credits || 0) : 0,
-        status: session?.paidSession ? "paid" : "stopped",
+        status: sessionIsPaid ? "paid" : "stopped",
         freeSessionUsed: true,
       });
     }
@@ -47,11 +54,11 @@ router.get("/session-status/:psychicId", protect, checkAndUpdateTimer, async (re
       return res.json({
         isFree: false,
         remainingFreeTime: 0,
-        paidTimer: session?.paidSession && session.paidStartTime
+        paidTimer: sessionIsPaid && session.paidStartTime
           ? Math.max(0, session.initialCredits * 60 - Math.floor((now - session.paidStartTime) / 1000))
           : 0,
         credits: wallet?.credits || 0,
-        status: session?.paidSession ? "paid" : "stopped",
+        status: sessionIsPaid ? "paid" : "stopped",
         freeSessionUsed: true,
       });
     }
@@ -68,7 +75,7 @@ router.get("/session-status/:psychicId", protect, checkAndUpdateTimer, async (re
     }
 
     const isFree = !session.freeSessionUsed && session.remainingFreeTime > 0;
-    const paidTimer = session.paidSession && session.paidStartTime
+    const paidTimer = sessionIsPaid && session.paidStartTime
       ? Math.max(0, session.initialCredits * 60 - Math.floor((now - session.paidStartTime) / 1000))
       : 0;
 
@@ -77,7 +84,7 @@ router.get("/session-status/:psychicId", protect, checkAndUpdateTimer, async (re
       remainingFreeTime: session.remainingFreeTime || 0,
       paidTimer,
       credits: wallet?.credits || 0,
-      status: isFree ? "free" : session.paidSession ? "paid" : "stopped",
+      status: isFree ? "free" : sessionIsPaid ? "paid" : "stopped",
       freeSessionUsed: user.hasUsedFreeMinute || session.freeSessionUsed,
     });
   } catch (error) {

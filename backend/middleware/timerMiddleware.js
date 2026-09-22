@@ -54,7 +54,13 @@ const checkAndUpdateTimer = async (req, res, next) => {
       }
 
       // Handle paid session credit deduction
-      if (session && session.paidSession && session.paidStartTime) {
+      // !session.isArchived guards against a session left with paidSession
+      // still true after being archived elsewhere -- without it, this
+      // stale record gets treated as live forever and its deduction math
+      // recomputes the wallet balance from a frozen initialCredits
+      // snapshot, silently overwriting any credits added since (including
+      // admin top-ups) back down to whatever that stale math produces.
+      if (session && !session.isArchived && session.paidSession && session.paidStartTime) {
         // Lock session to prevent concurrent updates
         session = await ActiveSession.findOneAndUpdate(
           { _id: session._id, lock: false },
@@ -147,7 +153,7 @@ const checkAndUpdateTimer = async (req, res, next) => {
       }
 
       // Check if wallet has enough credits to continue or start a paid session
-      if (!session || !session.paidSession) {
+      if (!session || session.isArchived || !session.paidSession) {
         if (!wallet || wallet.credits <= 0) {
           return res.status(400).json({ error: "Not enough credits" });
         }

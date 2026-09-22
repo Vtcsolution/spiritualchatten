@@ -56,6 +56,12 @@ const checkAndUpdateTimer = async (userId, psychicId, { allowFreeMinute = true, 
     return { available: false, message: "Purchase credits to continue chatting." };
   }
 
+  // (userId, psychicId) is a unique index -- there is only ever one
+  // ActiveSession document per pair, reused and mutated in place, so the
+  // lookup itself can't filter on isArchived (that would collide with the
+  // unique index on the create-if-missing path below). Instead, every
+  // paidSession check further down explicitly requires !isArchived too --
+  // see the comment there for why that matters.
   let session = await ActiveSession.findOne({ userId, psychicId });
   if (!session) {
     session = await ActiveSession.create({
@@ -72,8 +78,15 @@ const checkAndUpdateTimer = async (userId, psychicId, { allowFreeMinute = true, 
     console.log(`[Timer] New paid session created for user ${userId} with ${balance} ${creditField}`);
   }
 
-  // Check if paid session is active
-  if (session.paidSession && session.paidStartTime) {
+  // !session.isArchived matters here: a session can be left with
+  // paidSession still true after being archived (if some other code path
+  // reactivates the document later without resetting isArchived). Without
+  // this guard, that stale record gets read as an active paid session
+  // forever, and the deduction math below recomputes the wallet balance
+  // from its frozen initialCredits/paidStartTime -- silently overwriting
+  // any credits added since (including admin top-ups) back down to
+  // whatever that stale math produces.
+  if (!session.isArchived && session.paidSession && session.paidStartTime) {
     const secondsSinceStart = Math.floor((now - session.paidStartTime) / 1000);
     const remainingTime = session.initialCredits * 60 - secondsSinceStart;
 
@@ -91,6 +104,7 @@ const checkAndUpdateTimer = async (userId, psychicId, { allowFreeMinute = true, 
       );
       session.paidStartTime = now; // Reset timer for new credit
       session.initialCredits = 1; // Allocate 1 credit for new period
+      session.isArchived = false;
       await session.save();
       console.log(`[Timer] Extended paid session for user ${userId} with 1 new ${creditField}`);
       return { available: true, isFree: false, remainingTime: 60 };
@@ -120,6 +134,7 @@ const checkAndUpdateTimer = async (userId, psychicId, { allowFreeMinute = true, 
     session.paidSession = true;
     session.paidStartTime = now;
     session.initialCredits = minutesToCharge; // Set initialCredits for new paid session
+    session.isArchived = false;
     await session.save();
     console.log(`[Timer] Deducted ${minutesToCharge} ${creditField} for user ${userId}, new paid session started`);
   }
