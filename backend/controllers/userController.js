@@ -83,11 +83,12 @@ const registerUser = async (req, res) => {
       ...(dob && { dob: new Date(dob), hasRequestedFreeReport: true }),
     });
 
-    // Step 2: Create wallet with 2 free credits
+    // Step 2: Create wallet with 1 free credit, usable with either a human
+    // coach or the AI Coach (see hasEverPurchased gate removal below).
     await Wallet.create({
       userId: newUser._id,
       balance: 0, // No cash balance initially
-      credits: 2, // Add 2 free credits automatically
+      credits: 1, // Welcome bonus
       lock: false
     });
 

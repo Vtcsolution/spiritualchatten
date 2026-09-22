@@ -836,11 +836,11 @@ async function getPersonalityReport(birthDateStr, birthTimeStr, ianaTz, name = '
 }
 
 const checkChatAvailability = async (userId, psychicId) => {
-  // AI Coach chats never get the free minute, and require the user to have
-  // purchased credits at least once (requirePurchase) before they can spend
-  // from the wallet's `credits` balance — so the 2 free signup credits alone
-  // can never pay for AI Coach chat, but any purchase immediately unlocks it.
-  return await checkAndUpdateTimer(userId, psychicId, { allowFreeMinute: false, requirePurchase: true });
+  // AI Coach chats never get the free timed minute (that stays reserved for
+  // human coaches), but otherwise spend from the same shared `credits`
+  // balance as human coaches -- including the 1 free signup credit, which
+  // is usable with either.
+  return await checkAndUpdateTimer(userId, psychicId, { allowFreeMinute: false });
 };
 
 const chatWithPsychic = async (req, res) => {

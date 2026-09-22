@@ -186,7 +186,7 @@ export default function Signup() {
                     </div>
                     <div>
                       <h3 className="font-bold text-lg text-blue-800">
-                        U heeft 2 GRATIS credits ontvangen! 🎁
+                        U heeft 1 GRATIS credit ontvangen! 🎁
                       </h3>
                     </div>
                   </div>
@@ -266,7 +266,7 @@ export default function Signup() {
                   <div>
                     <h3 className="font-bold text-blue-800">Account aangemaakt! 🎉</h3>
                     <p className="text-blue-700 text-sm">
-                      Klik hier om uw 2 gratis credits te bekijken
+                      Klik hier om uw 1 gratis credit te bekijken
                     </p>
                   </div>
                 </div>
@@ -392,7 +392,7 @@ export default function Signup() {
               <div>
                 <p className="text-blue-800 text-base font-bold">Welkomstgeschenk! 🎁</p>
                 <p className="text-blue-700 text-sm mt-1">
-                  Bij registratie ontvangt u <strong className="text-lg">2 GRATIS credits</strong> om direct met een coach te chatten.
+                  Bij registratie ontvangt u <strong className="text-lg">1 GRATIS credit</strong> om direct met een coach te chatten.
                 </p>
                 <div className="mt-2 flex items-center gap-2">
                   <div className="h-1.5 w-1.5 bg-green-500 rounded-full animate-pulse"></div>

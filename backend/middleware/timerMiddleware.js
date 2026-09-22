@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const ActiveSession = require("../models/ActiveSession");
 const Wallet = require("../models/Wallet");
-const AiPsychic = require("../models/aiPsychic");
 const { acquireWalletLock } = require("../utils/walletLock");
 
 const checkAndUpdateTimer = async (req, res, next) => {
@@ -22,14 +21,6 @@ const checkAndUpdateTimer = async (req, res, next) => {
 
     if (!wallet) {
       return res.status(400).json({ error: "Wallet locked or not found" });
-    }
-
-    // AI Coach chats require at least one purchase before they can spend
-    // from `credits` at all — the free signup grant alone can never fund it.
-    const isAiPsychic = await AiPsychic.exists({ _id: psychicId });
-    if (isAiPsychic && !wallet.hasEverPurchased) {
-      await Wallet.updateOne({ userId }, { $set: { lock: false } });
-      return res.status(400).json({ error: "Purchase credits to chat with the AI Coach" });
     }
 
     try {

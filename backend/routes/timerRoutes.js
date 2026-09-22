@@ -44,7 +44,7 @@ router.get("/session-status/:psychicId", protect, checkAndUpdateTimer, async (re
         paidTimer: sessionIsPaid && session.paidStartTime
           ? Math.max(0, session.initialCredits * 60 - Math.floor((now - session.paidStartTime) / 1000))
           : 0,
-        credits: wallet?.hasEverPurchased ? (wallet?.credits || 0) : 0,
+        credits: wallet?.credits || 0,
         status: sessionIsPaid ? "paid" : "stopped",
         freeSessionUsed: true,
       });
@@ -180,8 +180,6 @@ router.post("/start-paid-session/:psychicId", protect, checkAndUpdateTimer, asyn
       return res.status(400).json({ error: "Invalid user or psychic ID" });
     }
 
-    const isAiPsychic = await AiPsychic.exists({ _id: psychicId });
-
     // Lock wallet, self-healing a stale lock instead of failing forever
     const wallet = await acquireWalletLock(userId);
     const maxAttempts = 5;
@@ -191,12 +189,6 @@ router.post("/start-paid-session/:psychicId", protect, checkAndUpdateTimer, asyn
     }
 
     try {
-      // AI Coach chats require at least one purchase before spending from
-      // `credits` — the free signup grant alone can never fund it.
-      if (isAiPsychic && !wallet.hasEverPurchased) {
-        return res.status(400).json({ error: "Purchase credits to chat with the AI Coach" });
-      }
-
       if (wallet.credits < 1) {
         return res.status(400).json({ error: "Not enough credits" });
       }

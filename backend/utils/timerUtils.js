@@ -5,13 +5,11 @@ const User = require("../models/User");
 
 const freeMinutes = 1;
 
-// `allowFreeMinute: false` skips the free-minute grant entirely (used for
-// AI Coach chats — free minutes/credits are reserved for human coaches only).
-// `requirePurchase: true` additionally requires wallet.hasEverPurchased —
-// so the AI Coach can be paid for out of the same `credits` balance as
-// human coaches once the user has topped up, but the free signup grant
-// alone can never fund it.
-const checkAndUpdateTimer = async (userId, psychicId, { allowFreeMinute = true, creditField = "credits", requirePurchase = false } = {}) => {
+// `allowFreeMinute: false` skips the free timed-minute grant entirely (used
+// for AI Coach chats — that free minute stays reserved for human coaches).
+// Otherwise AI Coach spends from the same shared `credits` balance as human
+// coaches, including the free signup credit.
+const checkAndUpdateTimer = async (userId, psychicId, { allowFreeMinute = true, creditField = "credits" } = {}) => {
   const now = new Date();
   const user = await User.findById(userId);
 
@@ -46,10 +44,6 @@ const checkAndUpdateTimer = async (userId, psychicId, { allowFreeMinute = true, 
 
   // Check wallet for paid session
   const wallet = await Wallet.findOne({ userId });
-  if (requirePurchase && !wallet?.hasEverPurchased) {
-    console.log(`[Timer] User ${userId} has never purchased credits — AI Coach requires a purchase first`);
-    return { available: false, message: "Purchase credits to chat with the AI Coach." };
-  }
   const balance = wallet ? (wallet[creditField] || 0) : 0;
   if (!wallet || balance <= 0) {
     console.log(`[Timer] No ${creditField} available for user ${userId}`);
@@ -68,6 +62,12 @@ const checkAndUpdateTimer = async (userId, psychicId, { allowFreeMinute = true, 
       userId,
       psychicId,
       startTime: now,
+      // freeEndTime is a required field on the schema even though this
+      // session skips the free-minute phase entirely (e.g. AI Coach, which
+      // never creates the free-session document first) -- `now` marks it
+      // as already elapsed/not applicable, matching remainingFreeTime: 0.
+      freeEndTime: now,
+      remainingFreeTime: 0,
       lastChargeTime: now,
       freeSessionUsed: true,
       isArchived: false,

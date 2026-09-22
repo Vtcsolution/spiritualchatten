@@ -34,8 +34,8 @@ exports.getWalletBalance = async (req, res) => {
 
 exports.addCredits = async (req, res) => {
   try {
-    const { userId, credits, unlockAi } = req.body;
-    console.log(`[addCredits] Request from admin ${req.admin?._id}: userId=${userId}, credits=${credits}, unlockAi=${unlockAi}`);
+    const { userId, credits } = req.body;
+    console.log(`[addCredits] Request from admin ${req.admin?._id}: userId=${userId}, credits=${credits}`);
 
     // Validate input
     if (!userId || !credits || credits <= 0) {
@@ -66,14 +66,10 @@ exports.addCredits = async (req, res) => {
       });
     }
 
-    // Update credits. Admin-granted credits count the same as a real
-    // purchase for AI Coach access unless explicitly opted out.
     wallet.credits = (wallet.credits || 0) + parseFloat(credits);
-    if (unlockAi !== false) {
-      wallet.hasEverPurchased = true;
-    }
+    wallet.hasEverPurchased = true;
     await wallet.save();
-    console.log(`[addCredits] Saved: userId=${userId} now has credits=${wallet.credits}, hasEverPurchased=${wallet.hasEverPurchased}`);
+    console.log(`[addCredits] Saved: userId=${userId} now has credits=${wallet.credits}`);
 
     // Emit the updated balance to the user's room
     req.io.to(userId).emit("walletUpdate", {

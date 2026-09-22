@@ -181,18 +181,17 @@ const AllUsers = () => {
     }
   };
 
-  const handleAddCredits = async (userId, unlockAi = true) => {
+  const handleAddCredits = async (userId) => {
     try {
       setIsAddingCredits(true);
       await axios.post(`${import.meta.env.VITE_BASE_URL}/api/wallet/add-credits`, {
         userId,
         credits: parseFloat(creditsToAdd),
-        unlockAi,
       }, {
         headers: { Authorization: `Bearer ${admin.token}` },
         withCredentials: true,
       });
-      toast.success(`Successfully added ${creditsToAdd} credits${unlockAi ? " (AI Coach unlocked)" : ""}`);
+      toast.success(`Successfully added ${creditsToAdd} credits`);
       setCreditsToAdd("");
       fetchPsychics(pagination.currentPage, pagination.limit);
     } catch (err) {
@@ -387,7 +386,7 @@ const AllUsers = () => {
                               <DialogHeader>
                                 <DialogTitle>Add Credits to {psychic.username}</DialogTitle>
                                 <DialogDescription>
-                                  Credits are one shared balance for human coaches and the AI Coach. The 2 free signup credits alone never unlock the AI Coach — only a purchase (or an admin grant marked below) does.
+                                  Credits are one shared balance usable with either human coaches or the AI Coach.
                                 </DialogDescription>
                               </DialogHeader>
                               <div className="grid gap-4 py-4">
@@ -404,20 +403,13 @@ const AllUsers = () => {
                                   />
                                 </div>
                               </div>
-                              <DialogFooter className="flex-col sm:flex-row gap-2">
-                                <Button
-                                  variant="outline"
-                                  onClick={() => handleAddCredits(psychic._id, false)}
-                                  disabled={isAddingCredits || !creditsToAdd || creditsToAdd <= 0}
-                                >
-                                  {isAddingCredits ? "Adding..." : "Add Credits (human coaches only)"}
-                                </Button>
+                              <DialogFooter>
                                 <Button
                                   variant="brand"
-                                  onClick={() => handleAddCredits(psychic._id, true)}
+                                  onClick={() => handleAddCredits(psychic._id)}
                                   disabled={isAddingCredits || !creditsToAdd || creditsToAdd <= 0}
                                 >
-                                  {isAddingCredits ? "Adding..." : "Add Credits + Unlock AI Coach"}
+                                  {isAddingCredits ? "Adding..." : "Add Credits"}
                                 </Button>
                               </DialogFooter>
                             </DialogContent>
