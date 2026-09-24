@@ -41,8 +41,26 @@ exports.createWalletTopup = async (req, res) => {
       '/api/payments/webhook'
     );
 
+    // Login is stored in localStorage, which is per-origin -- www and
+    // non-www count as different origins with nothing shared between them.
+    // Redirecting everyone to a single fixed FRONTEND_URL meant anyone who
+    // started the purchase on the *other* variant landed back on a page
+    // with no access to their token and looked logged out, even though
+    // their session on the origin they actually browsed from was still
+    // fine. Redirect back to whichever origin the request actually came
+    // from instead (validated against the same allowlist CORS uses), so
+    // the user always lands back on the origin holding their token.
+    const allowedOrigins = [
+      'https://spiritueelchatten.nl',
+      'https://www.spiritueelchatten.nl',
+    ];
+    const requestOrigin = req.headers.origin;
+    const redirectBase = allowedOrigins.includes(requestOrigin)
+      ? requestOrigin
+      : (process.env.FRONTEND_URL || 'http://localhost:5173');
+
     const redirectUrl = getValidUrl(
-      process.env.FRONTEND_URL || 'http://localhost:5173',
+      redirectBase,
       '/payment/result'
     );
 
