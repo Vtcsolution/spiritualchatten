@@ -3,8 +3,14 @@ const { createMollieClient } = require("@mollie/api-client");
 const Wallet = require("../models/Wallet");
 const Payment = require("../models/Payment");
 const User = require("../models/User"); // Now properly used for username lookup
-const mollieClient = createMollieClient({ 
-  apiKey: process.env.MOLLIE_TEST_API_KEY 
+// Was hardcoded to MOLLIE_TEST_API_KEY regardless of environment, so
+// production was silently processing every "purchase" in Mollie test mode
+// (no real money ever charged) even once a live key existed. Pick the live
+// key in production, test key otherwise.
+const mollieClient = createMollieClient({
+  apiKey: process.env.NODE_ENV === "production"
+    ? process.env.MOLLIE_LIVE_API_KEY
+    : process.env.MOLLIE_TEST_API_KEY,
 });
 
 exports.createWalletTopup = async (req, res) => {
